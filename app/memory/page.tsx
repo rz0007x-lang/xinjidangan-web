@@ -99,6 +99,7 @@ export default function MemoryPage() {
   }, [dates]);
 
   const visibleMonthKey = toMonthKey(visibleMonth);
+  const monthDates = dates.filter((date) => date.startsWith(visibleMonthKey));
   const itemsForSelectedDate = items.filter((item) => item.date === selectedDate);
 
   function switchMonth(offset: number) {
@@ -107,13 +108,7 @@ export default function MemoryPage() {
     const firstDateInMonth = dates.find((date) => date.startsWith(nextMonthKey));
 
     setVisibleMonth(next);
-    if (firstDateInMonth) {
-      setSelectedDate(firstDateInMonth);
-      return;
-    }
-
-    // Show an empty month view when no memory exists for that month.
-    setSelectedDate(`${nextMonthKey}-01`);
+    setSelectedDate(firstDateInMonth ?? "");
   }
 
   return (
@@ -167,6 +162,11 @@ export default function MemoryPage() {
               </div>
 
               <div className="mt-5 space-y-3">
+                {!monthDates.length ? (
+                  <div className="rounded-[18px] border border-dashed border-line bg-mist px-4 py-4 text-sm leading-7 text-ink/50">
+                    当前月份暂无记忆，日历仍可切换到其他月份继续查看。
+                  </div>
+                ) : null}
                 {weeks.map((week, weekIndex) => (
                   <div key={`week-${weekIndex}`} className="grid grid-cols-7 gap-y-3 text-center">
                     {week.map((cell) => {

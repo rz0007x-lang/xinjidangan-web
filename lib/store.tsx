@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import {
+  demoAccounts as initialDemoAccounts,
   memorySpaces as initialMemorySpaces,
   mockUser,
   promptDrafts as initialPromptDrafts,
@@ -9,6 +10,7 @@ import {
 } from "./mock-data";
 import type {
   AuditStatus,
+  DemoAccount,
   MemorySpace,
   PromptDraft,
   PromptTemplate,
@@ -23,18 +25,26 @@ type UploadTemplateInput = {
   tags: string[];
   systemPrompt: string;
   personaPrompt: string;
+  defaultArchetype?: string;
+  defaultPersonality?: string;
+  starterGreeting?: string;
 };
 
 type AppState = {
   user: User;
   isAuthenticated: boolean;
+  hasHydratedStorage: boolean;
+  demoAccounts: DemoAccount[];
   currentMemoryId: string;
   memorySpaces: MemorySpace[];
   templates: PromptTemplate[];
   promptDrafts: PromptDraft[];
   reviewSubmissions: ReviewSubmission[];
   shareCampaigns: ShareCampaign[];
-  login: (account: string) => void;
+  inboxReadMessageIds: string[];
+  login: (account: string, password: string) => { ok: boolean; reason?: "account_not_found" | "wrong_password" | "account_disabled" };
+  registerDemoAccount: (account: string, password: string) => { ok: boolean; reason?: "account_exists" };
+  resetDemoPassword: (account: string, password: string) => { ok: boolean; reason?: "account_not_found" };
   logout: () => void;
   setCurrentMemoryId: (id: string) => void;
   recharge: (amount: number, bonus: number) => void;
@@ -48,6 +58,8 @@ type AppState = {
   recordShareVisit: (code: string) => string;
   recordShareActivation: (code: string, visitorId: string) => void;
   recordShareEffectiveUse: (code: string, visitorId: string) => void;
+  markInboxMessageRead: (messageId: string) => void;
+  markAllInboxMessagesRead: (messageIds: string[]) => void;
 };
 
 const STORAGE_KEY = "companion-platform-state-v1";
@@ -57,26 +69,34 @@ const AppContext = createContext<AppState | null>(null);
 type PersistedState = {
   user: User;
   isAuthenticated: boolean;
+  demoAccounts: DemoAccount[];
   currentMemoryId: string;
   templates: PromptTemplate[];
   promptDrafts: PromptDraft[];
   reviewSubmissions: ReviewSubmission[];
   shareCampaigns: ShareCampaign[];
+  inboxReadMessageIds: string[];
 };
 
 const defaultState: PersistedState = {
   user: mockUser,
   isAuthenticated: false,
+  demoAccounts: initialDemoAccounts,
   currentMemoryId: initialMemorySpaces[0].id,
   templates: initialPromptTemplates,
   promptDrafts: initialPromptDrafts,
   reviewSubmissions: [],
-  shareCampaigns: []
+  shareCampaigns: [],
+  inboxReadMessageIds: []
 };
 
 function createShareCode(memoryId: string) {
   const suffix = memoryId.replace("memory-", "").slice(0, 4).toUpperCase();
   return `SOUL-${suffix}-${new Date().getFullYear()}`;
+}
+
+function normalizeAccount(account: string) {
+  return account.trim().toLowerCase();
 }
 
 function buildShareCampaign(memoryId: string): ShareCampaign {
@@ -158,21 +178,86 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     () => ({
       user: state.user,
       isAuthenticated: state.isAuthenticated,
+      hasHydratedStorage,
+      demoAccounts: state.demoAccounts,
       currentMemoryId: state.currentMemoryId,
       memorySpaces: initialMemorySpaces,
       templates: state.templates,
       promptDrafts: state.promptDrafts,
       reviewSubmissions: state.reviewSubmissions,
       shareCampaigns: state.shareCampaigns,
-      login: (account: string) => {
+      inboxReadMessageIds: state.inboxReadMessageIds,
+      login: (account: string, password: string) => {
+        const normalizedAccount = normalizeAccount(account);
+        const normalizedPassword = password.trim();
+        const existingAccount = state.demoAccounts.find((item) => normalizeAccount(item.account) === normalizedAccount);
+
+        if (!existingAccount) {
+          return { ok: false as const, reason: "account_not_found" as const };
+        }
+
+        if (existingAccount.disabled) {
+          return { ok: false as const, reason: "account_disabled" as const };
+        }
+
+        if (existingAccount.password !== normalizedPassword) {
+          return { ok: false as const, reason: "wrong_password" as const };
+        }
+
         setState((current) => ({
           ...current,
           isAuthenticated: true,
           user: {
             ...current.user,
-            email: account || current.user.email
+            email: existingAccount.account
           }
         }));
+
+        return { ok: true as const };
+      },
+      registerDemoAccount: (account: string, password: string) => {
+        const normalizedAccount = normalizeAccount(account);
+        const exists = state.demoAccounts.some((item) => normalizeAccount(item.account) === normalizedAccount);
+
+        if (exists) {
+          return { ok: false as const, reason: "account_exists" as const };
+        }
+
+        setState((current) => ({
+          ...current,
+          demoAccounts: [
+            {
+              account: account.trim(),
+              password: password.trim(),
+              createdAt: new Date().toISOString()
+            },
+            ...current.demoAccounts
+          ]
+        }));
+
+        return { ok: true as const };
+      },
+      resetDemoPassword: (account: string, password: string) => {
+        const normalizedAccount = normalizeAccount(account);
+        const exists = state.demoAccounts.some((item) => normalizeAccount(item.account) === normalizedAccount);
+
+        if (!exists) {
+          return { ok: false as const, reason: "account_not_found" as const };
+        }
+
+        setState((current) => ({
+          ...current,
+          demoAccounts: current.demoAccounts.map((item) =>
+            normalizeAccount(item.account) === normalizedAccount
+              ? {
+                  ...item,
+                  password: password.trim()
+                }
+              : item
+          )
+        }));
+
+        return { ok: true as const };
       },
       logout: () => {
         setState((current) => ({ ...current, isAuthenticated: false }));
@@ -209,6 +294,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           auditStatus: "pending",
           systemPrompt: input.systemPrompt,
           personaPrompt: input.personaPrompt,
+          source: "user",
+          defaultArchetype: input.defaultArchetype,
+          defaultPersonality: input.defaultPersonality,
+          starterGreeting: input.starterGreeting,
           createdAt: new Date().toISOString().slice(0, 10)
         };
 
@@ -234,9 +323,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           memorySpaceId: memoryId,
           memoryName: template.name,
           tone: template.personaPrompt,
-          personality: "稳定、克制，能根据上下文保持连续表达。",
+          personality: template.defaultPersonality ?? "稳定、克制，能根据上下文保持连续表达。",
           persona: template.description,
-          archetype: "DeepSeek",
+          archetype: template.defaultArchetype ?? "DeepSeek",
           backstory: template.systemPrompt
         };
 
@@ -293,22 +382,35 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       },
       recordShareVisit: (code: string) => {
         const currentCampaign = state.shareCampaigns.find((item) => item.code === code);
-        const visitorId = `visitor-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+        const expectedMemory = initialMemorySpaces.find((item) => createShareCode(item.id) === code);
 
-        if (!currentCampaign) {
-          const memory =
-            initialMemorySpaces.find((item) => createShareCode(item.id) === code) ?? initialMemorySpaces[0];
+        if (!currentCampaign && !expectedMemory) {
+          return "";
+        }
+
+        const visitorId = `visitor-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+        const storageKey = `share-visit-${code}`;
+        const nowIso = new Date().toISOString();
+
+        if (typeof window !== "undefined" && window.sessionStorage.getItem(storageKey)) {
+          return visitorId;
+        }
+
+        if (!currentCampaign && expectedMemory) {
           const nextCampaign = {
-            ...buildShareCampaign(memory.id),
+            ...buildShareCampaign(expectedMemory.id),
             code,
             visits: 1,
-            lastVisitedAt: new Date().toISOString()
+            lastVisitedAt: nowIso
           };
 
           setState((current) => ({
             ...current,
             shareCampaigns: [nextCampaign, ...current.shareCampaigns]
           }));
+          if (typeof window !== "undefined") {
+            window.sessionStorage.setItem(storageKey, nowIso);
+          }
           return visitorId;
         }
 
@@ -319,11 +421,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               ? {
                   ...item,
                   visits: item.visits + 1,
-                  lastVisitedAt: new Date().toISOString()
+                  lastVisitedAt: nowIso
                 }
               : item
           )
         }));
+        if (typeof window !== "undefined") {
+          window.sessionStorage.setItem(storageKey, nowIso);
+        }
         return visitorId;
       },
       recordShareActivation: (code: string, visitorId: string) => {
@@ -352,6 +457,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 }
               : item
           )
+        }));
+      },
+      markInboxMessageRead: (messageId: string) => {
+        setState((current) =>
+          current.inboxReadMessageIds.includes(messageId)
+            ? current
+            : {
+                ...current,
+                inboxReadMessageIds: [...current.inboxReadMessageIds, messageId]
+              }
+        );
+      },
+      markAllInboxMessagesRead: (messageIds: string[]) => {
+        setState((current) => ({
+          ...current,
+          inboxReadMessageIds: Array.from(new Set([...current.inboxReadMessageIds, ...messageIds]))
         }));
       }
     }),

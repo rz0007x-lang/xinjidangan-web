@@ -13,16 +13,18 @@ export default function ShareLandingPage() {
   const [visitorId, setVisitorId] = useState("");
   const [started, setStarted] = useState(false);
   const [messageCount, setMessageCount] = useState(0);
+  const [effectiveRecorded, setEffectiveRecorded] = useState(false);
 
   const campaign = useMemo(() => shareCampaigns.find((item) => item.code === code) ?? null, [code, shareCampaigns]);
-  const memory = useMemo(
-    () => memorySpaces.find((item) => item.id === campaign?.memorySpaceId) ?? memorySpaces[0],
-    [campaign, memorySpaces]
-  );
+  const memory = useMemo(() => {
+    if (!campaign) return null;
+    return memorySpaces.find((item) => item.id === campaign.memorySpaceId) ?? null;
+  }, [campaign, memorySpaces]);
 
   useEffect(() => {
     if (!code || visitorId) return;
     const nextVisitorId = recordShareVisit(code);
+    if (!nextVisitorId) return;
     setVisitorId(nextVisitorId);
   }, [code, recordShareVisit, visitorId]);
 
@@ -33,12 +35,34 @@ export default function ShareLandingPage() {
   }
 
   function handleSendMessage() {
-    if (!visitorId) return;
+    if (!visitorId || effectiveRecorded) return;
     const nextCount = messageCount + 1;
     setMessageCount(nextCount);
     if (nextCount >= 3) {
       recordShareEffectiveUse(code, visitorId);
+      setEffectiveRecorded(true);
     }
+  }
+
+  if (!campaign || !memory) {
+    return (
+      <main className="min-h-screen bg-linen px-6 py-10">
+        <div className="mx-auto max-w-3xl">
+          <Card className="p-8 text-center">
+            <p className="text-sm uppercase tracking-[0.22em] text-ink/40">Union Soul Share</p>
+            <h1 className="font-editorial mt-4 text-[36px] text-ink">分享码无效</h1>
+            <p className="mt-4 text-base leading-8 text-ink/62">
+              这个分享链接不存在、已失效，或已经被回收。请联系创作者重新获取有效链接。
+            </p>
+            <div className="mt-8">
+              <Link href="/">
+                <Button variant="secondary">返回首页</Button>
+              </Link>
+            </div>
+          </Card>
+        </div>
+      </main>
+    );
   }
 
   return (
@@ -73,13 +97,16 @@ export default function ShareLandingPage() {
               </div>
 
               <div className="flex flex-wrap items-center gap-3">
-                <Button onClick={handleSendMessage}>发送一条消息</Button>
+                <Button onClick={handleSendMessage} disabled={effectiveRecorded}>
+                  {effectiveRecorded ? "已完成有效体验" : "发送一条消息"}
+                </Button>
                 <span className="text-sm text-ink/54">当前已发送 {messageCount} / 3 条</span>
               </div>
 
               <p className="text-sm leading-7 text-ink/58">
                 当你发送满 3 条消息后，系统会自动把这次体验计入创作者的“有效使用人数”。
               </p>
+              {effectiveRecorded ? <p className="text-sm text-sage">本次体验已完成计数，重复点击不会再次累加。</p> : null}
             </div>
           )}
         </Card>

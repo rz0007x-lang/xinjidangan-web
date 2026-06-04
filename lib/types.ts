@@ -9,6 +9,13 @@ export type User = {
   email: string;
 };
 
+export type DemoAccount = {
+  account: string;
+  password: string;
+  createdAt: string;
+  disabled?: boolean;
+};
+
 export type ReviewSubmissionStatus = "pending" | "approved" | "rejected";
 
 export type ReviewSubmission = {
@@ -41,7 +48,7 @@ export type InboxMessage = {
   content: string;
   createdAt: string;
   category: "invite" | "coupon" | "system";
-  unread?: boolean;
+  unread: boolean;
 };
 
 export type MemorySpace = {
@@ -62,6 +69,10 @@ export type PromptTemplate = {
   auditStatus: AuditStatus;
   systemPrompt: string;
   personaPrompt: string;
+  source?: "official" | "community" | "user";
+  defaultArchetype?: string;
+  defaultPersonality?: string;
+  starterGreeting?: string;
   createdAt: string;
 };
 

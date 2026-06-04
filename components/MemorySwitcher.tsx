@@ -3,7 +3,13 @@
 import { BrainCircuit } from "lucide-react";
 import { useAppState } from "@/lib/store";
 
-export function MemorySwitcher({ compact = false }: { compact?: boolean }) {
+export function MemorySwitcher({
+  compact = false,
+  onBeforeChange
+}: {
+  compact?: boolean;
+  onBeforeChange?: (nextId: string) => boolean;
+}) {
   const { memorySpaces, currentMemoryId, setCurrentMemoryId } = useAppState();
 
   return (
@@ -17,7 +23,13 @@ export function MemorySwitcher({ compact = false }: { compact?: boolean }) {
       <select
         className="min-h-10 w-full rounded-[18px] border border-line bg-white/94 px-3 py-2 text-sm text-ink outline-none focus:border-sage focus:ring-2 focus:ring-sage/15"
         value={currentMemoryId}
-        onChange={(event) => setCurrentMemoryId(event.target.value)}
+        onChange={(event) => {
+          const nextId = event.target.value;
+          if (onBeforeChange && !onBeforeChange(nextId)) {
+            return;
+          }
+          setCurrentMemoryId(nextId);
+        }}
       >
         {memorySpaces.map((memory) => (
           <option key={memory.id} value={memory.id}>

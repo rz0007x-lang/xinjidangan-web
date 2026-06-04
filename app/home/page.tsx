@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BrainCircuit, CreditCard, Inbox, MessageSquareText, RefreshCw } from "lucide-react";
+import { BrainCircuit, CreditCard, Inbox, MessageSquareText, RefreshCw, Sparkles } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Badge, Button, Card, SectionHeader, inputClass } from "@/components/ui";
 import { useAppState } from "@/lib/store";
@@ -17,11 +17,15 @@ const shortcuts = [
 
 export default function HomePage() {
   const router = useRouter();
-  const { user, memorySpaces, currentMemoryId, setCurrentMemoryId, reviewSubmissions, shareCampaigns, updateNickname } = useAppState();
+  const { user, memorySpaces, currentMemoryId, promptDrafts, setCurrentMemoryId, reviewSubmissions, shareCampaigns, updateNickname } =
+    useAppState();
   const latestPendingPost = reviewSubmissions.find((item) => item.type === "post" && item.status === "pending");
   const activeShareCampaign = shareCampaigns.find((item) => item.memorySpaceId === currentMemoryId) ?? null;
+  const activePromptDraft = promptDrafts.find((item) => item.memorySpaceId === currentMemoryId) ?? promptDrafts[0];
+  const isOfficialXiaoU = activePromptDraft?.memoryName === "小U";
   const [editingNickname, setEditingNickname] = useState(false);
   const [nicknameDraft, setNicknameDraft] = useState(user.nickname);
+  const [nicknameError, setNicknameError] = useState("");
 
   useEffect(() => {
     setNicknameDraft(user.nickname);
@@ -29,8 +33,12 @@ export default function HomePage() {
 
   function handleNicknameSave() {
     const trimmed = nicknameDraft.trim();
-    if (!trimmed) return;
+    if (!trimmed) {
+      setNicknameError("昵称不能为空，请至少输入 1 个字符。");
+      return;
+    }
     updateNickname(trimmed);
+    setNicknameError("");
     setEditingNickname(false);
   }
 
@@ -60,6 +68,7 @@ export default function HomePage() {
                         if (event.key === "Enter") handleNicknameSave();
                         if (event.key === "Escape") {
                           setNicknameDraft(user.nickname);
+                          setNicknameError("");
                           setEditingNickname(false);
                         }
                       }}
@@ -74,12 +83,14 @@ export default function HomePage() {
                         className="min-h-8 px-3 text-xs"
                         onClick={() => {
                           setNicknameDraft(user.nickname);
+                          setNicknameError("");
                           setEditingNickname(false);
                         }}
                       >
                         取消
                       </Button>
                     </div>
+                    {nicknameError ? <p className="text-xs text-red-500">{nicknameError}</p> : null}
                   </div>
                 ) : (
                   <button
@@ -87,6 +98,7 @@ export default function HomePage() {
                     className="text-left text-xl font-semibold text-ink transition hover:text-sage"
                     onClick={() => {
                       setNicknameDraft(user.nickname);
+                      setNicknameError("");
                       setEditingNickname(true);
                     }}
                   >
@@ -113,6 +125,24 @@ export default function HomePage() {
                 前往充值
               </Button>
             </Link>
+            <div className="mt-4 rounded-[20px] border border-[#eadfe6] bg-[#fbf7fa] p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs text-ink/46">当前智能体</p>
+                  <h3 className="mt-2 text-lg font-semibold text-ink">{isOfficialXiaoU ? "小U" : "自定义"}</h3>
+                  <p className="mt-2 text-sm leading-6 text-ink/58">
+                    {isOfficialXiaoU
+                      ? "当前记忆体正在使用官方陪伴智能体小U。"
+                      : `当前记忆体使用的是「${activePromptDraft?.memoryName ?? "自定义智能体"}」这套自定义设定。`}
+                  </p>
+                </div>
+                <Badge tone={isOfficialXiaoU ? "info" : "neutral"}>{isOfficialXiaoU ? "官方" : "自定义"}</Badge>
+              </div>
+              <Button className="mt-4 w-full" variant="secondary" onClick={() => router.push("/prompt-debug")}>
+                <Sparkles className="h-4 w-4" />
+                管理当前智能体
+              </Button>
+            </div>
           </Card>
 
           <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-4">
@@ -176,6 +206,10 @@ export default function HomePage() {
                     {active ? <Badge tone="success">使用中</Badge> : <RefreshCw className="h-4 w-4 text-ink/35" />}
                   </div>
                   <p className="mt-3 text-sm leading-6 text-ink/60">{memory.description}</p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <Badge tone="info">官设智能体：小U</Badge>
+                    {active ? <Badge tone="success">点入后可查看完整提示词</Badge> : null}
+                  </div>
                   <div className="mt-4 flex flex-wrap gap-2 text-xs text-ink/50">
                     <span>最近更新：{memory.lastUpdated}</span>
                     <span>语气：{memory.tone}</span>

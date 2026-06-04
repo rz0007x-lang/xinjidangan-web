@@ -28,7 +28,7 @@ const navItems = [
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, logout } = useAppState();
+  const { user, logout, isAuthenticated, hasHydratedStorage } = useAppState();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
@@ -42,6 +42,34 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     window.addEventListener("mousedown", handlePointerDown);
     return () => window.removeEventListener("mousedown", handlePointerDown);
   }, []);
+
+  useEffect(() => {
+    if (!hasHydratedStorage) return;
+
+    if (!isAuthenticated) {
+      router.replace("/");
+    }
+  }, [hasHydratedStorage, isAuthenticated, router]);
+
+  if (!hasHydratedStorage) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-linen px-6">
+        <div className="rounded-[24px] border border-line bg-white/90 px-8 py-6 text-center shadow-soft">
+          <p className="text-sm text-ink/52">正在恢复工作台状态…</p>
+        </div>
+      </main>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-linen px-6">
+        <div className="rounded-[24px] border border-line bg-white/90 px-8 py-6 text-center shadow-soft">
+          <p className="text-sm text-ink/52">当前未登录，正在返回登录页…</p>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <div className="min-h-screen lg:grid lg:grid-cols-[248px_1fr]">
