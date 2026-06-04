@@ -1,4 +1,4 @@
-import type { MemoryItem, MemorySpace, PromptDraft, PromptTemplate, RechargePlan, User } from "./types";
+import type { InboxMessage, MemoryItem, MemorySpace, PromptDraft, PromptTemplate, RechargePlan, User } from "./types";
 
 export const mockUser: User = {
   id: "AX-2048-7391",
@@ -36,27 +36,30 @@ export const memorySpaces: MemorySpace[] = [
 export const promptDrafts: PromptDraft[] = [
   {
     memorySpaceId: "memory-home",
-    templateName: "长期生活陪伴",
-    systemPrompt: "你是一个长期陪伴型 AI，优先保持稳定、可信和不越界。你会引用当前记忆体中的事实，但不会臆造用户未表达的信息。",
-    personaPrompt: "语气温和、具体，少使用空泛鼓励。先理解用户状态，再给出一两个可执行建议。",
-    temperature: 0.65,
-    maxTokens: 800
+    memoryName: "日常陪伴",
+    tone: "温和、稳定、少打扰，优先用低压感的表达陪用户把一天收住。",
+    personality: "耐心、克制、会观察细节，不急着给结论，也不会过度热情。",
+    persona: "像一个长期在线的生活陪伴者，熟悉用户的作息、偏好和情绪节奏。",
+    archetype: "Kimi",
+    backstory: "这个记忆体长期记录用户在生活中的节奏、放松方式和被反复提到的小偏好，用于日常对话时提供连续感。"
   },
   {
     memorySpaceId: "memory-work",
-    templateName: "项目复盘助手",
-    systemPrompt: "你是用户的工作搭档，关注上下文、约束、风险和下一步。回答要简洁，必要时列出待确认问题。",
-    personaPrompt: "保持冷静专业，避免情绪化表述。优先给出结论，再说明依据。",
-    temperature: 0.45,
-    maxTokens: 900
+    memoryName: "工作搭档",
+    tone: "冷静、直接、结构清晰，优先先结论后依据。",
+    personality: "理性、讲边界、重执行，遇到不确定信息会主动标记风险。",
+    persona: "像一个了解项目上下文的协作搭档，能快速进入任务、复盘和推进状态。",
+    archetype: "DeepSeek",
+    backstory: "这个记忆体沉淀了用户在项目推进中的表达习惯、文档偏好和协作方式，方便在复杂任务里保持上下文连贯。"
   },
   {
     memorySpaceId: "memory-family",
-    templateName: "关系沟通陪伴",
-    systemPrompt: "你帮助用户梳理亲密关系中的事实、感受和边界。你不会替用户做道德审判，也不会鼓励操控他人。",
-    personaPrompt: "表达细腻但不过度亲昵，提醒用户区分观察、感受和请求。",
-    temperature: 0.58,
-    maxTokens: 850
+    memoryName: "亲密关系",
+    tone: "细腻、柔和、有分寸，避免刺激性措辞和绝对判断。",
+    personality: "敏感但稳定，重视情绪安全、边界感和关系中的节奏。",
+    persona: "像一个可信赖的关系陪伴者，帮助用户先整理感受，再找到更稳妥的表达。",
+    archetype: "GPT-4o",
+    backstory: "这个记忆体记录了重要纪念日、关系中的触发点和沟通习惯，帮助对话在亲密议题里保持细致和不越界。"
   }
 ];
 
@@ -201,7 +204,7 @@ export const rechargePlans: RechargePlan[] = [
     name: "轻量补给",
     amount: 50,
     bonus: 5,
-    description: "适合低频调试和社区模板试用"
+    description: "适合低频调试与日常轻量使用"
   },
   {
     id: "plan-128",
@@ -224,5 +227,37 @@ export const rechargePlans: RechargePlan[] = [
     amount: 698,
     bonus: 188,
     description: "适合团队或重度长期陪伴场景"
+  }
+];
+
+export const inboxMessages: InboxMessage[] = [
+  {
+    id: "msg-001",
+    from: "小U",
+    title: "你的邀请码已生成",
+    preview: "邀请码 US-2026-12 已可使用，邀请新用户后双方都能获得对话奖励。",
+    content: "邀请码 US-2026-12 已可使用。你可以把它发送给新朋友，完成绑定后双方都会收到对应的对话奖励。",
+    createdAt: "2026-06-04 16:20",
+    category: "invite",
+    unread: true
+  },
+  {
+    id: "msg-002",
+    from: "系统",
+    title: "你收到一张 189 元优惠券",
+    preview: "本月创作激励活动已发放优惠券，可用于充值页直接抵扣。",
+    content: "恭喜你获得 189 元 tokens 优惠券一张，可在充值页使用。有效期至 2026-06-30，请留意及时使用。",
+    createdAt: "2026-06-03 21:05",
+    category: "coupon",
+    unread: true
+  },
+  {
+    id: "msg-003",
+    from: "小U",
+    title: "发帖征集奖励审核中",
+    preview: "你提交的发帖链接已经进入审核队列，审核通过后会自动发放奖励。",
+    content: "你最近提交的发帖链接已进入审核队列。审核通过后，奖励会自动发放到账号余额或对话轮次中，请耐心等待。",
+    createdAt: "2026-06-02 18:42",
+    category: "system"
   }
 ];

@@ -15,7 +15,7 @@ export function MemorySwitcher({ compact = false }: { compact?: boolean }) {
         </span>
       ) : null}
       <select
-        className="min-h-10 w-full rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink outline-none focus:border-sage focus:ring-2 focus:ring-sage/15"
+        className="min-h-10 w-full rounded-[18px] border border-line bg-white/94 px-3 py-2 text-sm text-ink outline-none focus:border-sage focus:ring-2 focus:ring-sage/15"
         value={currentMemoryId}
         onChange={(event) => setCurrentMemoryId(event.target.value)}
       >

@@ -9,6 +9,41 @@ export type User = {
   email: string;
 };
 
+export type ReviewSubmissionStatus = "pending" | "approved" | "rejected";
+
+export type ReviewSubmission = {
+  id: string;
+  type: "post" | "invite";
+  title: string;
+  link: string;
+  submittedAt: string;
+  status: ReviewSubmissionStatus;
+};
+
+export type ShareCampaign = {
+  code: string;
+  memorySpaceId: string;
+  title: string;
+  summary: string;
+  visits: number;
+  activatedVisitorIds: string[];
+  effectiveVisitorIds: string[];
+  lastVisitedAt?: string;
+  lastActivatedAt?: string;
+  lastEffectiveAt?: string;
+};
+
+export type InboxMessage = {
+  id: string;
+  from: "小U" | "系统";
+  title: string;
+  preview: string;
+  content: string;
+  createdAt: string;
+  category: "invite" | "coupon" | "system";
+  unread?: boolean;
+};
+
 export type MemorySpace = {
   id: string;
   name: string;
@@ -51,9 +86,10 @@ export type RechargePlan = {
 
 export type PromptDraft = {
   memorySpaceId: string;
-  templateName: string;
-  systemPrompt: string;
-  personaPrompt: string;
-  temperature: number;
-  maxTokens: number;
+  memoryName: string;
+  tone: string;
+  personality: string;
+  persona: string;
+  archetype: string;
+  backstory: string;
 };

@@ -1,6 +1,6 @@
 # Union soul 
 
-心迹档案是一个长期陪伴型 AI 平台 MVP，面向账号管理、充值、记忆体查看、提示词调试、社区模板导入与管理员审核流程。
+心迹档案是一个长期陪伴型 AI 平台 MVP，面向账号管理、充值、记忆体查看与提示词调试流程。
 
 ## 技术栈
 
@@ -25,8 +25,6 @@ npm run dev
 - `/home` 用户主页
 - `/recharge` 充值页
 - `/prompt-debug` 提示词调试页
-- `/community` 社区模板页
 - `/memory` 记忆查看页
-- `/admin/templates` 管理员审核页
 
 更多构建说明见 `docs/mvp-build-notes.md`。

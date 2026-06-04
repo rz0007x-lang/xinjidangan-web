@@ -7,7 +7,15 @@ import {
   promptDrafts as initialPromptDrafts,
   promptTemplates as initialPromptTemplates
 } from "./mock-data";
-import type { AuditStatus, MemorySpace, PromptDraft, PromptTemplate, User } from "./types";
+import type {
+  AuditStatus,
+  MemorySpace,
+  PromptDraft,
+  PromptTemplate,
+  ReviewSubmission,
+  ShareCampaign,
+  User
+} from "./types";
 
 type UploadTemplateInput = {
   name: string;
@@ -24,6 +32,8 @@ type AppState = {
   memorySpaces: MemorySpace[];
   templates: PromptTemplate[];
   promptDrafts: PromptDraft[];
+  reviewSubmissions: ReviewSubmission[];
+  shareCampaigns: ShareCampaign[];
   login: (account: string) => void;
   logout: () => void;
   setCurrentMemoryId: (id: string) => void;
@@ -32,6 +42,12 @@ type AppState = {
   uploadTemplate: (template: UploadTemplateInput) => PromptTemplate;
   updateTemplateStatus: (id: string, status: AuditStatus) => void;
   importTemplateToMemory: (templateId: string, memoryId: string) => void;
+  submitReviewLink: (input: { type: "post"; title: string; link: string }) => void;
+  updateNickname: (nickname: string) => void;
+  ensureShareCampaign: (memoryId: string) => ShareCampaign;
+  recordShareVisit: (code: string) => string;
+  recordShareActivation: (code: string, visitorId: string) => void;
+  recordShareEffectiveUse: (code: string, visitorId: string) => void;
 };
 
 const STORAGE_KEY = "companion-platform-state-v1";
@@ -44,6 +60,8 @@ type PersistedState = {
   currentMemoryId: string;
   templates: PromptTemplate[];
   promptDrafts: PromptDraft[];
+  reviewSubmissions: ReviewSubmission[];
+  shareCampaigns: ShareCampaign[];
 };
 
 const defaultState: PersistedState = {
@@ -51,35 +69,90 @@ const defaultState: PersistedState = {
   isAuthenticated: false,
   currentMemoryId: initialMemorySpaces[0].id,
   templates: initialPromptTemplates,
-  promptDrafts: initialPromptDrafts
+  promptDrafts: initialPromptDrafts,
+  reviewSubmissions: [],
+  shareCampaigns: []
 };
 
+function createShareCode(memoryId: string) {
+  const suffix = memoryId.replace("memory-", "").slice(0, 4).toUpperCase();
+  return `SOUL-${suffix}-${new Date().getFullYear()}`;
+}
+
+function buildShareCampaign(memoryId: string): ShareCampaign {
+  const memory = initialMemorySpaces.find((item) => item.id === memoryId) ?? initialMemorySpaces[0];
+  return {
+    code: createShareCode(memory.id),
+    memorySpaceId: memory.id,
+    title: `${memory.name}分享链接`,
+    summary: `${memory.name} · ${memory.description}`,
+    visits: 0,
+    activatedVisitorIds: [],
+    effectiveVisitorIds: []
+  };
+}
+
+function hydrateShareCampaigns(campaigns: ShareCampaign[]) {
+  if (campaigns.length > 0) {
+    return campaigns;
+  }
+
+  return initialMemorySpaces.map((memory) => buildShareCampaign(memory.id));
+}
+
+function normalizePromptDrafts(drafts: PromptDraft[]) {
+  return drafts.map((draft) => {
+    const fallback = initialPromptDrafts.find((item) => item.memorySpaceId === draft.memorySpaceId);
+    return {
+      ...fallback,
+      ...draft
+    } as PromptDraft;
+  });
+}
+
+function buildInitialState() {
+  return {
+    ...defaultState,
+    shareCampaigns: hydrateShareCampaigns(defaultState.shareCampaigns)
+  };
+}
+
+function mergePersistedState(parsed: PersistedState) {
+  return {
+    ...defaultState,
+    ...parsed,
+    user: { ...defaultState.user, ...parsed.user },
+    promptDrafts: normalizePromptDrafts(parsed.promptDrafts ?? defaultState.promptDrafts),
+    shareCampaigns: hydrateShareCampaigns(parsed.shareCampaigns ?? defaultState.shareCampaigns)
+  };
+}
+
 export function AppProvider({ children }: { children: React.ReactNode }) {
-  const [state, setState] = useState<PersistedState>(defaultState);
-  const [hydrated, setHydrated] = useState(false);
+  const [state, setState] = useState<PersistedState>(buildInitialState);
+  const [hasHydratedStorage, setHasHydratedStorage] = useState(false);
 
   useEffect(() => {
     const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      try {
-        const parsed = JSON.parse(raw) as PersistedState;
-        setState({
-          ...defaultState,
-          ...parsed,
-          user: { ...defaultState.user, ...parsed.user }
-        });
-      } catch {
-        setState(defaultState);
-      }
+
+    if (!raw) {
+      setHasHydratedStorage(true);
+      return;
     }
-    setHydrated(true);
+
+    try {
+      const parsed = JSON.parse(raw) as PersistedState;
+      setState(mergePersistedState(parsed));
+    } catch {
+      // Ignore malformed local state and fall back to defaults.
+    } finally {
+      setHasHydratedStorage(true);
+    }
   }, []);
 
   useEffect(() => {
-    if (hydrated) {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    }
-  }, [hydrated, state]);
+    if (!hasHydratedStorage) return;
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  }, [hasHydratedStorage, state]);
 
   const value = useMemo<AppState>(
     () => ({
@@ -89,6 +162,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       memorySpaces: initialMemorySpaces,
       templates: state.templates,
       promptDrafts: state.promptDrafts,
+      reviewSubmissions: state.reviewSubmissions,
+      shareCampaigns: state.shareCampaigns,
       login: (account: string) => {
         setState((current) => ({
           ...current,
@@ -157,11 +232,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
         const draft: PromptDraft = {
           memorySpaceId: memoryId,
-          templateName: template.name,
-          systemPrompt: template.systemPrompt,
-          personaPrompt: template.personaPrompt,
-          temperature: 0.62,
-          maxTokens: 900
+          memoryName: template.name,
+          tone: template.personaPrompt,
+          personality: "稳定、克制，能根据上下文保持连续表达。",
+          persona: template.description,
+          archetype: "DeepSeek",
+          backstory: template.systemPrompt
         };
 
         setState((current) => ({
@@ -174,6 +250,108 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             ...current.promptDrafts.filter((item) => item.memorySpaceId !== memoryId),
             draft
           ]
+        }));
+      },
+      submitReviewLink: ({ type, title, link }) => {
+        const submission: ReviewSubmission = {
+          id: `review-${Date.now()}`,
+          type,
+          title,
+          link,
+          submittedAt: new Date().toISOString(),
+          status: "pending"
+        };
+
+        setState((current) => ({
+          ...current,
+          reviewSubmissions: [submission, ...current.reviewSubmissions]
+        }));
+      },
+      updateNickname: (nickname: string) => {
+        setState((current) => ({
+          ...current,
+          user: {
+            ...current.user,
+            nickname
+          }
+        }));
+      },
+      ensureShareCampaign: (memoryId: string) => {
+        const existing =
+          state.shareCampaigns.find((item) => item.memorySpaceId === memoryId) ??
+          state.shareCampaigns.find((item) => item.code === createShareCode(memoryId));
+        if (existing) {
+          return existing;
+        }
+
+        const nextCampaign = buildShareCampaign(memoryId);
+        setState((current) => ({
+          ...current,
+          shareCampaigns: [nextCampaign, ...current.shareCampaigns]
+        }));
+        return nextCampaign;
+      },
+      recordShareVisit: (code: string) => {
+        const currentCampaign = state.shareCampaigns.find((item) => item.code === code);
+        const visitorId = `visitor-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+        if (!currentCampaign) {
+          const memory =
+            initialMemorySpaces.find((item) => createShareCode(item.id) === code) ?? initialMemorySpaces[0];
+          const nextCampaign = {
+            ...buildShareCampaign(memory.id),
+            code,
+            visits: 1,
+            lastVisitedAt: new Date().toISOString()
+          };
+
+          setState((current) => ({
+            ...current,
+            shareCampaigns: [nextCampaign, ...current.shareCampaigns]
+          }));
+          return visitorId;
+        }
+
+        setState((current) => ({
+          ...current,
+          shareCampaigns: current.shareCampaigns.map((item) =>
+            item.code === code
+              ? {
+                  ...item,
+                  visits: item.visits + 1,
+                  lastVisitedAt: new Date().toISOString()
+                }
+              : item
+          )
+        }));
+        return visitorId;
+      },
+      recordShareActivation: (code: string, visitorId: string) => {
+        setState((current) => ({
+          ...current,
+          shareCampaigns: current.shareCampaigns.map((item) =>
+            item.code === code && !item.activatedVisitorIds.includes(visitorId)
+              ? {
+                  ...item,
+                  activatedVisitorIds: [...item.activatedVisitorIds, visitorId],
+                  lastActivatedAt: new Date().toISOString()
+                }
+              : item
+          )
+        }));
+      },
+      recordShareEffectiveUse: (code: string, visitorId: string) => {
+        setState((current) => ({
+          ...current,
+          shareCampaigns: current.shareCampaigns.map((item) =>
+            item.code === code && !item.effectiveVisitorIds.includes(visitorId)
+              ? {
+                  ...item,
+                  effectiveVisitorIds: [...item.effectiveVisitorIds, visitorId],
+                  lastEffectiveAt: new Date().toISOString()
+                }
+              : item
+          )
         }));
       }
     }),

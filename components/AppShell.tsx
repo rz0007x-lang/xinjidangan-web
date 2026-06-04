@@ -2,48 +2,57 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import {
-  Bot,
   BrainCircuit,
+  ChevronDown,
   CreditCard,
+  Headset,
   Home,
+  Inbox,
   LayoutDashboard,
   LogOut,
-  MessageSquareText,
-  ShieldCheck,
-  UsersRound
+  MessageSquareText
 } from "lucide-react";
 import { clsx } from "clsx";
 import { useAppState } from "@/lib/store";
-import { Button } from "./ui";
 
 const navItems = [
   { href: "/home", label: "用户主页", icon: Home },
   { href: "/prompt-debug", label: "提示词调试", icon: MessageSquareText },
   { href: "/memory", label: "记忆查看", icon: BrainCircuit },
-  { href: "/community", label: "社区模板", icon: UsersRound },
-  { href: "/recharge", label: "充值", icon: CreditCard },
-  { href: "/admin/templates", label: "管理员审核", icon: ShieldCheck }
+  { href: "/inbox", label: "收件箱", icon: Inbox },
+  { href: "/recharge", label: "充值", icon: CreditCard }
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout } = useAppState();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    function handlePointerDown(event: MouseEvent) {
+      if (!menuRef.current?.contains(event.target as Node)) {
+        setMenuOpen(false);
+      }
+    }
+
+    window.addEventListener("mousedown", handlePointerDown);
+    return () => window.removeEventListener("mousedown", handlePointerDown);
+  }, []);
 
   return (
     <div className="min-h-screen lg:grid lg:grid-cols-[248px_1fr]">
-      <aside className="hidden border-r border-line/80 bg-linen/82 px-4 py-5 backdrop-blur lg:block">
+      <aside className="hidden border-r border-line/70 bg-linen/70 px-5 py-6 backdrop-blur lg:block">
         <Link href="/home" className="mb-8 flex items-center gap-3 rounded-lg px-2">
-          <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-ink text-white">
-            <Bot className="h-5 w-5" />
-          </span>
           <span>
-            <span className="block text-base font-semibold text-ink">心迹陪伴</span>
-            <span className="text-xs text-ink/52">MindTrace Companion</span>
+            <span className="font-editorial block text-[22px] font-semibold text-ink">心迹档案</span>
+            <span className="text-[11px] uppercase tracking-[0.2em] text-ink/44">Union Soul Workspace</span>
           </span>
         </Link>
-        <nav className="space-y-1">
+        <nav className="space-y-2">
           {navItems.map((item) => {
             const Icon = item.icon;
             const active = pathname === item.href;
@@ -52,8 +61,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 key={item.href}
                 href={item.href}
                 className={clsx(
-                  "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition",
-                  active ? "bg-sage text-white" : "text-ink/68 hover:bg-white hover:text-ink"
+                  "flex items-center gap-3 rounded-[18px] px-3 py-2.5 text-sm font-medium transition",
+                  active
+                    ? "bg-white text-ink shadow-[0_12px_30px_rgba(80,67,53,0.08)]"
+                    : "text-ink/60 hover:bg-white/80 hover:text-ink"
                 )}
               >
                 <Icon className="h-4 w-4" />
@@ -65,32 +76,57 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </aside>
 
       <div className="min-w-0">
-        <header className="sticky top-0 z-20 border-b border-line/80 bg-linen/88 px-4 py-3 backdrop-blur lg:px-8">
+        <header className="sticky top-0 z-20 border-b border-line/70 bg-linen/82 px-4 py-3 backdrop-blur lg:px-8">
           <div className="flex items-center justify-between gap-3">
             <Link href="/home" className="flex items-center gap-2 lg:hidden">
               <LayoutDashboard className="h-5 w-5 text-sage" />
-              <span className="font-semibold text-ink">心迹陪伴</span>
+              <span className="font-semibold text-ink">心迹档案</span>
             </Link>
-            <div className="hidden text-sm text-ink/58 lg:block">MindTrace Companion MVP</div>
+            <div className="hidden text-[11px] uppercase tracking-[0.22em] text-ink/42 lg:block">Union Soul Workspace</div>
             <div className="flex items-center gap-3">
               <div className="hidden text-right sm:block">
                 <p className="text-sm font-medium text-ink">{user.nickname}</p>
-                <p className="text-xs text-ink/50">{user.membership} · ¥{user.balance.toFixed(2)}</p>
               </div>
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-clay text-sm font-semibold text-white">
-                {user.avatar}
+              <div className="relative" ref={menuRef}>
+                <button
+                  type="button"
+                  className="flex items-center gap-2 rounded-full border border-line/80 bg-white/88 px-2 py-1.5 shadow-[0_10px_24px_rgba(223,201,232,0.18)] transition hover:border-sage/40 hover:bg-white"
+                  onClick={() => setMenuOpen((current) => !current)}
+                >
+                  <div className="flex h-9 w-9 items-center justify-center rounded-[16px] bg-clay text-sm font-semibold text-white">
+                    {user.avatar}
+                  </div>
+                  <ChevronDown className={`h-4 w-4 text-ink/48 transition ${menuOpen ? "rotate-180" : ""}`} />
+                </button>
+
+                {menuOpen ? (
+                  <div className="absolute right-0 top-[calc(100%+10px)] z-30 w-44 rounded-[20px] border border-line bg-white p-2 shadow-[0_20px_40px_rgba(80,67,53,0.12)]">
+                    <button
+                      type="button"
+                      className="flex w-full items-center gap-3 rounded-[14px] px-3 py-2.5 text-sm font-medium text-ink/72 transition hover:bg-mist hover:text-ink"
+                      onClick={() => {
+                        setMenuOpen(false);
+                        router.push("/support");
+                      }}
+                    >
+                      <Headset className="h-4 w-4" />
+                      联系客服
+                    </button>
+                    <button
+                      type="button"
+                      className="flex w-full items-center gap-3 rounded-[14px] px-3 py-2.5 text-sm font-medium text-ink/72 transition hover:bg-mist hover:text-ink"
+                      onClick={() => {
+                        setMenuOpen(false);
+                        logout();
+                        router.push("/");
+                      }}
+                    >
+                      <LogOut className="h-4 w-4" />
+                      退出登录
+                    </button>
+                  </div>
+                ) : null}
               </div>
-              <Button
-                variant="ghost"
-                className="h-9 w-9 px-0"
-                title="退出登录"
-                onClick={() => {
-                  logout();
-                  router.push("/");
-                }}
-              >
-                <LogOut className="h-4 w-4" />
-              </Button>
             </div>
           </div>
           <nav className="mt-3 flex gap-2 overflow-x-auto pb-1 lg:hidden">
@@ -102,8 +138,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   key={item.href}
                   href={item.href}
                   className={clsx(
-                    "flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium transition",
-                    active ? "bg-sage text-white" : "bg-white text-ink/68"
+                    "flex shrink-0 items-center gap-2 rounded-[16px] px-3 py-2 text-xs font-medium transition",
+                    active ? "bg-white text-ink shadow-[0_10px_22px_rgba(80,67,53,0.08)]" : "bg-white/82 text-ink/68"
                   )}
                 >
                   <Icon className="h-3.5 w-3.5" />
