@@ -1,16 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, Settings2, Trash2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { Badge, Button, Card, SectionHeader, inputClass } from "@/components/ui";
 import { useAppState } from "@/lib/store";
 
 export default function HomePage() {
-  const { user, memorySpaces, currentMemoryId, promptDrafts, setCurrentMemoryId, updateNickname } = useAppState();
-  const activeDraft = promptDrafts.find((item) => item.memorySpaceId === currentMemoryId) ?? promptDrafts[0];
+  const router = useRouter();
+  const { user, memorySpaces, currentMemoryId, setCurrentMemoryId, updateNickname, deleteMemorySpace } = useAppState();
   const [editingNickname, setEditingNickname] = useState(false);
   const [nicknameDraft, setNicknameDraft] = useState(user.nickname);
   const [nicknameError, setNicknameError] = useState("");
+  const [memoryActionError, setMemoryActionError] = useState("");
 
   useEffect(() => {
     setNicknameDraft(user.nickname);
@@ -26,6 +28,19 @@ export default function HomePage() {
     updateNickname(trimmed);
     setNicknameError("");
     setEditingNickname(false);
+  }
+
+  function handleDeleteMemorySpace(memoryId: string, memoryName: string) {
+    const confirmed = window.confirm(`确定删除记忆体「${memoryName}」吗？删除后该记忆体下的当前设定与分享数据也会一起移除。`);
+    if (!confirmed) return;
+
+    const result = deleteMemorySpace(memoryId);
+    if (!result.ok) {
+      setMemoryActionError(result.reason === "last_memory" ? "至少要保留一个记忆体，当前这条不能删除。" : "删除失败，请稍后再试。");
+      return;
+    }
+
+    setMemoryActionError("");
   }
 
   return (
@@ -125,33 +140,51 @@ export default function HomePage() {
           <div className="grid gap-4 lg:grid-cols-3">
             {memorySpaces.map((memory) => {
               const active = memory.id === currentMemoryId;
-              const boundDraft = promptDrafts.find((item) => item.memorySpaceId === memory.id) ?? activeDraft;
 
               return (
-                <button
+                <div
                   key={memory.id}
                   className={`rounded-[20px] border p-4 text-left transition ${
                     active ? "border-[#d7c9ea] bg-[#fbf7fc] shadow-[0_10px_28px_rgba(120,94,124,0.06)]" : "border-line bg-white hover:border-sage/50"
                   }`}
-                  onClick={() => setCurrentMemoryId(memory.id)}
                 >
                   <div className="flex items-start justify-between gap-3">
-                    <h3 className="font-semibold text-ink">{memory.name}</h3>
-                    {active ? <Badge tone="success">使用中</Badge> : <RefreshCw className="h-4 w-4 text-ink/35" />}
+                    <div className="flex items-center gap-3">
+                      <h3 className="font-semibold text-ink">{memory.name}</h3>
+                      {active ? <Badge tone="success">使用中</Badge> : <RefreshCw className="h-4 w-4 text-ink/35" />}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="secondary"
+                        className="min-h-8 px-3 text-xs"
+                        onClick={() => {
+                          setCurrentMemoryId(memory.id);
+                          router.push("/prompt-debug");
+                        }}
+                      >
+                        <Settings2 className="h-3.5 w-3.5" />
+                        管理
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        className="min-h-8 px-3 text-xs text-[#b86474]"
+                        onClick={() => handleDeleteMemorySpace(memory.id, memory.name)}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        删除
+                      </Button>
+                    </div>
                   </div>
                   <p className="mt-3 text-sm leading-6 text-ink/60">{memory.description}</p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <Badge tone="info">智能体设定：{boundDraft.personaName}</Badge>
-                    <Badge tone="neutral">当前绑定：{boundDraft.promptMemoryName}</Badge>
-                  </div>
                   <div className="mt-4 flex flex-wrap gap-2 text-xs text-ink/50">
                     <span>最近更新：{memory.lastUpdated}</span>
                     <span>默认语气：{memory.tone}</span>
                   </div>
-                </button>
+                </div>
               );
             })}
           </div>
+          {memoryActionError ? <p className="mt-4 text-sm text-red-500">{memoryActionError}</p> : null}
         </Card>
       </div>
     </div>

@@ -54,6 +54,7 @@ type AppState = {
   resetDemoPassword: (account: string, password: string) => { ok: boolean; reason?: "account_not_found" };
   logout: () => void;
   setCurrentMemoryId: (id: string) => void;
+  deleteMemorySpace: (id: string) => { ok: boolean; reason?: "last_memory" | "not_found" };
   recharge: (amount: number, bonus: number) => void;
   savePromptDraft: (draft: PromptDraft) => void;
   uploadTemplate: (template: UploadTemplateInput) => PromptTemplate;
@@ -77,6 +78,7 @@ type PersistedState = {
   user: User;
   isAuthenticated: boolean;
   demoAccounts: DemoAccount[];
+  memorySpaces: MemorySpace[];
   currentMemoryId: string;
   templates: PromptTemplate[];
   promptDrafts: PromptDraft[];
@@ -89,6 +91,7 @@ const defaultState: PersistedState = {
   user: mockUser,
   isAuthenticated: false,
   demoAccounts: initialDemoAccounts,
+  memorySpaces: initialMemorySpaces,
   currentMemoryId: initialMemorySpaces[0].id,
   templates: initialPromptTemplates,
   promptDrafts: initialPromptDrafts,
@@ -157,6 +160,7 @@ function mergePersistedState(parsed: PersistedState) {
     ...defaultState,
     ...parsed,
     user: { ...defaultState.user, ...parsed.user },
+    memorySpaces: parsed.memorySpaces?.length ? parsed.memorySpaces : defaultState.memorySpaces,
     promptDrafts: normalizePromptDrafts(parsed.promptDrafts ?? defaultState.promptDrafts),
     shareCampaigns: hydrateShareCampaigns(parsed.shareCampaigns ?? defaultState.shareCampaigns)
   };
@@ -196,7 +200,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       hasHydratedStorage,
       demoAccounts: state.demoAccounts,
       currentMemoryId: state.currentMemoryId,
-      memorySpaces: initialMemorySpaces,
+      memorySpaces: state.memorySpaces,
       promptPersonas: initialPromptPersonaPresets,
       promptMemories: initialPromptMemoryPresets,
       templates: state.templates,
@@ -281,6 +285,31 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       },
       setCurrentMemoryId: (id: string) => {
         setState((current) => ({ ...current, currentMemoryId: id }));
+      },
+      deleteMemorySpace: (id: string) => {
+        const exists = state.memorySpaces.some((item) => item.id === id);
+        if (!exists) {
+          return { ok: false as const, reason: "not_found" as const };
+        }
+
+        if (state.memorySpaces.length <= 1) {
+          return { ok: false as const, reason: "last_memory" as const };
+        }
+
+        setState((current) => {
+          const remainingMemorySpaces = current.memorySpaces.filter((item) => item.id !== id);
+          const nextCurrentMemoryId = current.currentMemoryId === id ? remainingMemorySpaces[0]?.id ?? current.currentMemoryId : current.currentMemoryId;
+
+          return {
+            ...current,
+            memorySpaces: remainingMemorySpaces,
+            currentMemoryId: nextCurrentMemoryId,
+            promptDrafts: current.promptDrafts.filter((item) => item.memorySpaceId !== id),
+            shareCampaigns: current.shareCampaigns.filter((item) => item.memorySpaceId !== id)
+          };
+        });
+
+        return { ok: true as const };
       },
       recharge: (amount: number, bonus: number) => {
         setState((current) => ({
