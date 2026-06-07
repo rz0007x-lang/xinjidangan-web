@@ -155,7 +155,7 @@ export default function LoginPage() {
       return;
     }
 
-    setNotice("验证通过，正在进入用户主页。");
+    setNotice("验证通过，正在进入个人中心。");
     router.push("/home");
   }
 
@@ -287,7 +287,7 @@ export default function LoginPage() {
           <Card className="border-white/60 bg-white/68 p-6 shadow-[0_18px_45px_rgba(112,92,100,0.08)] sm:p-8">
             <div className="mb-6">
               <h2 className="font-editorial text-[30px] text-ink">登录</h2>
-              <p className="mt-2 text-sm text-ink/56">使用手机号或邮箱进入用户主页。</p>
+              <p className="mt-2 text-sm text-ink/56">使用手机号或邮箱进入个人中心。</p>
             </div>
             <form id="login-form" className="space-y-4" onSubmit={handleSubmit}>
               <label className="block">

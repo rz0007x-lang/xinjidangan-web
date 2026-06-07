@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { CalendarDays, ChevronLeft, ChevronRight, Clock3 } from "lucide-react";
-import { AppShell } from "@/components/AppShell";
 import { MemorySwitcher } from "@/components/MemorySwitcher";
 import { Badge, Card, SectionHeader } from "@/components/ui";
 import { memoryItems } from "@/lib/mock-data";
@@ -112,8 +111,7 @@ export default function MemoryPage() {
   }
 
   return (
-    <AppShell>
-      <div className="mx-auto max-w-7xl space-y-6">
+    <div className="mx-auto max-w-7xl space-y-6">
         <SectionHeader
           eyebrow="Memory"
           title="记忆查看"
@@ -232,7 +230,6 @@ export default function MemoryPage() {
             </div>
           </Card>
         </div>
-      </div>
-    </AppShell>
+    </div>
   );
 }

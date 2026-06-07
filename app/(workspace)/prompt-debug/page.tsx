@@ -3,8 +3,7 @@
 import { FormEvent, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
-import { Bot, Save, Send, Sparkles, UserRound } from "lucide-react";
-import { AppShell } from "@/components/AppShell";
+import { Bot, Save, Send, UserRound } from "lucide-react";
 import { MemorySwitcher } from "@/components/MemorySwitcher";
 import { Badge, Button, Card, SectionHeader, textareaClass } from "@/components/ui";
 import { useAppState, useCurrentMemory } from "@/lib/store";
@@ -27,11 +26,9 @@ export default function PromptDebugPage() {
 
 function PromptDebugFallback() {
   return (
-    <AppShell>
-      <div className="mx-auto max-w-7xl">
-        <Card className="p-6 text-sm text-ink/56">正在加载提示词调试页...</Card>
-      </div>
-    </AppShell>
+    <div className="mx-auto max-w-7xl">
+      <Card className="p-6 text-sm text-ink/56">正在加载提示词调试页...</Card>
+    </div>
   );
 }
 
@@ -41,10 +38,11 @@ function PromptDebugContent() {
   const importedTemplateId = searchParams.get("template");
   const {
     currentMemoryId,
+    promptMemories,
+    promptPersonas,
     templates,
     promptDrafts,
     savePromptDraft,
-    uploadTemplate,
     importTemplateToMemory
   } = useAppState();
   const currentMemory = useCurrentMemory();
@@ -66,6 +64,11 @@ function PromptDebugContent() {
   const [fieldError, setFieldError] = useState("");
   const importedRef = useRef<string | null>(null);
 
+  const availableMemories = useMemo(
+    () => promptMemories.filter((item) => item.personaId === draft.personaId),
+    [draft.personaId, promptMemories]
+  );
+
   function updateDraft<K extends keyof PromptDraft>(key: K, value: PromptDraft[K], maxLength: number, label: string) {
     const normalized = typeof value === "string" ? value.slice(0, maxLength) : value;
     if (typeof value === "string" && value.length > maxLength) {
@@ -82,14 +85,14 @@ function PromptDebugContent() {
   useEffect(() => {
     const nextDraft = promptDrafts.find((item) => item.memorySpaceId === currentMemoryId);
     if (nextDraft) {
-      setDraft(nextDraft);
+      setDraft({ ...nextDraft, memoryName: currentMemory.name });
       setSaved(false);
       setHasUnsavedChanges(false);
       setFieldError("");
       setChat([
         {
           role: "ai",
-          content: `已切换到「${currentMemory.name}」。当前记忆体命名为「${nextDraft.memoryName}」。`
+          content: `已切换到「${currentMemory.name}」。当前记忆体命名已同步为「${currentMemory.name}」。`
         }
       ]);
     }
@@ -118,6 +121,46 @@ function PromptDebugContent() {
     return window.confirm("当前提示词还有未保存修改，确定要离开吗？");
   }
 
+  function applyPersona(personaId: string) {
+    const nextPersona = promptPersonas.find((item) => item.id === personaId);
+    if (!nextPersona) return;
+    const nextMemory =
+      promptMemories.find((item) => item.personaId === personaId) ??
+      promptMemories.find((item) => item.id === draft.promptMemoryId);
+
+    if (!nextMemory) return;
+
+    setDraft((current) => ({
+      ...current,
+      personaId: nextPersona.id,
+      personaName: nextPersona.name,
+      promptMemoryId: nextMemory.id,
+      promptMemoryName: nextMemory.name,
+      promptMemorySnippet: nextMemory.memorySnippet,
+      tone: nextPersona.tone,
+      personality: nextPersona.personality,
+      persona: nextPersona.persona,
+      archetype: nextPersona.archetype,
+      backstory: nextPersona.backstory
+    }));
+    setHasUnsavedChanges(true);
+    setSaved(false);
+  }
+
+  function applyPromptMemory(promptMemoryId: string) {
+    const nextMemory = promptMemories.find((item) => item.id === promptMemoryId);
+    if (!nextMemory) return;
+
+    setDraft((current) => ({
+      ...current,
+      promptMemoryId: nextMemory.id,
+      promptMemoryName: nextMemory.name,
+      promptMemorySnippet: nextMemory.memorySnippet
+    }));
+    setHasUnsavedChanges(true);
+    setSaved(false);
+  }
+
   function handleChat(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const trimmed = message.trim();
@@ -128,18 +171,17 @@ function PromptDebugContent() {
       { role: "user", content: trimmed },
       {
         role: "ai",
-        content: `基于「${draft.memoryName}」这套设定，我会用${draft.tone.slice(0, 12)}的语气回应，并保持${draft.personality.slice(0, 14)}的性格表达。就这条消息看，可以先记住一个关键事实：${trimmed.slice(0, 42)}。`
+        content: `现在是「${draft.personaName} + ${draft.promptMemoryName}」这组设定。我会用${draft.tone.slice(0, 12)}的语气回应，并参考这段记忆：${draft.promptMemorySnippet.slice(0, 34)}。就这条消息看，当前最该接住的是：${trimmed.slice(0, 36)}。`
       }
     ]);
   }
 
   return (
-    <AppShell>
-      <div className="mx-auto max-w-7xl space-y-6">
+    <div className="mx-auto max-w-7xl space-y-6">
         <SectionHeader
           eyebrow="Union Soul Workspace"
           title="提示词调试"
-          description="这里编辑当前记忆体的人物设定字段；切换记忆体后会加载对应命名、语气、性格、人设、基模和背景故事。"
+          description="这里按“人设 persona + 绑定记忆体”来调试角色；切换人设后，可继续挑选该人设对应的不同记忆体。"
           action={<MemorySwitcher compact onBeforeChange={() => confirmLeave()} />}
         />
 
@@ -158,8 +200,43 @@ function PromptDebugContent() {
                 <textarea
                   className={`${textareaClass} min-h-0 h-12 resize-none overflow-hidden`}
                   value={draft.memoryName}
-                  onChange={(event) => updateDraft("memoryName", event.target.value, 20, "记忆体命名")}
+                  readOnly
                 />
+                <p className="mt-2 text-xs text-ink/48">记忆体命名会自动跟随当前选中的记忆体。</p>
+              </label>
+              <label>
+                <span className="mb-2 block text-sm font-medium text-ink/72">角色 / Persona</span>
+                <select
+                  className="min-h-12 w-full rounded-[14px] border border-line bg-white/72 px-3 py-2 text-sm text-ink outline-none transition focus:border-sage focus:ring-2 focus:ring-sage/15"
+                  value={draft.personaId}
+                  onChange={(event) => applyPersona(event.target.value)}
+                >
+                  {promptPersonas.map((persona) => (
+                    <option key={persona.id} value={persona.id}>
+                      {persona.name}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-2 text-xs leading-5 text-ink/48">
+                  {promptPersonas.find((item) => item.id === draft.personaId)?.summary}
+                </p>
+              </label>
+              <label>
+                <span className="mb-2 block text-sm font-medium text-ink/72">绑定记忆体</span>
+                <select
+                  className="min-h-12 w-full rounded-[14px] border border-line bg-white/72 px-3 py-2 text-sm text-ink outline-none transition focus:border-sage focus:ring-2 focus:ring-sage/15"
+                  value={draft.promptMemoryId}
+                  onChange={(event) => applyPromptMemory(event.target.value)}
+                >
+                  {availableMemories.map((memory) => (
+                    <option key={memory.id} value={memory.id}>
+                      {memory.name}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-2 text-xs leading-5 text-ink/48">
+                  {availableMemories.find((item) => item.id === draft.promptMemoryId)?.summary}
+                </p>
               </label>
               <label>
                 <span className="mb-2 block text-sm font-medium text-ink/72">语气</span>
@@ -204,6 +281,15 @@ function PromptDebugContent() {
                 </select>
               </label>
               <label className="md:col-span-2">
+                <span className="mb-2 block text-sm font-medium text-ink/72">记忆体内容</span>
+                <textarea
+                  className={`${textareaClass} min-h-28`}
+                  value={draft.promptMemorySnippet}
+                  onChange={(event) => updateDraft("promptMemorySnippet", event.target.value, 300, "记忆体内容")}
+                />
+                <p className="mt-2 text-xs text-ink/48">这段内容会作为当前角色绑定的记忆体摘要参与 mock 对话。</p>
+              </label>
+              <label className="md:col-span-2">
                 <span className="mb-2 block text-sm font-medium text-ink/72">系统提示词 / 背景设定</span>
                 <textarea
                   className={`${textareaClass} min-h-40`}
@@ -230,7 +316,7 @@ function PromptDebugContent() {
               <Button
                 className="w-full sm:w-auto"
                 onClick={() => {
-                  savePromptDraft({ ...draft, memorySpaceId: currentMemoryId });
+                  savePromptDraft({ ...draft, memorySpaceId: currentMemoryId, memoryName: currentMemory.name });
                   setSaved(true);
                   setHasUnsavedChanges(false);
                 }}
@@ -239,13 +325,13 @@ function PromptDebugContent() {
                 保存到当前记忆体
               </Button>
             </div>
-            {saved ? <p className="mt-3 text-sm text-sage">已保存当前提示词到「{currentMemory.name}」。</p> : null}
+            {saved ? <p className="mt-3 text-sm text-sage">已保存「{draft.personaName} + {draft.promptMemoryName}」到「{currentMemory.name}」。</p> : null}
           </Card>
 
           <Card className="flex min-h-[760px] flex-col overflow-hidden p-6">
             <div className="border-b border-line/80 pb-5">
               <h2 className="font-editorial text-[28px] text-ink">调试聊天</h2>
-              <p className="mt-1 text-sm leading-6 text-ink/56">模拟对话会参考当前记忆体的人设字段和表达方式。</p>
+              <p className="mt-1 text-sm leading-6 text-ink/56">模拟对话会同时参考当前 persona 字段和所选记忆体内容。</p>
             </div>
             <div className="flex-1 space-y-4 overflow-y-auto py-5">
               {chat.map((item, index) => {
@@ -286,7 +372,6 @@ function PromptDebugContent() {
             </form>
           </Card>
         </div>
-      </div>
-    </AppShell>
+    </div>
   );
 }

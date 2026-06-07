@@ -10,6 +10,7 @@ import {
   Headset,
   Home,
   Inbox,
+  Megaphone,
   LayoutDashboard,
   LogOut,
   MessageSquareText
@@ -18,11 +19,12 @@ import { clsx } from "clsx";
 import { useAppState } from "@/lib/store";
 
 const navItems = [
-  { href: "/home", label: "用户主页", icon: Home },
+  { href: "/home", label: "个人中心", icon: Home },
   { href: "/prompt-debug", label: "提示词调试", icon: MessageSquareText },
   { href: "/memory", label: "记忆查看", icon: BrainCircuit },
+  { href: "/growth", label: "邀请与分享", icon: Megaphone },
   { href: "/inbox", label: "收件箱", icon: Inbox },
-  { href: "/recharge", label: "充值", icon: CreditCard }
+  { href: "/recharge", label: "充值中心", icon: CreditCard }
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {

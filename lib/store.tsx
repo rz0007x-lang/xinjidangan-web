@@ -2,9 +2,12 @@
 
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import {
+  buildPromptDraft,
   demoAccounts as initialDemoAccounts,
   memorySpaces as initialMemorySpaces,
   mockUser,
+  promptMemoryPresets as initialPromptMemoryPresets,
+  promptPersonaPresets as initialPromptPersonaPresets,
   promptDrafts as initialPromptDrafts,
   promptTemplates as initialPromptTemplates
 } from "./mock-data";
@@ -13,6 +16,8 @@ import type {
   DemoAccount,
   MemorySpace,
   PromptDraft,
+  PromptMemoryPreset,
+  PromptPersonaPreset,
   PromptTemplate,
   ReviewSubmission,
   ShareCampaign,
@@ -37,6 +42,8 @@ type AppState = {
   demoAccounts: DemoAccount[];
   currentMemoryId: string;
   memorySpaces: MemorySpace[];
+  promptPersonas: PromptPersonaPreset[];
+  promptMemories: PromptMemoryPreset[];
   templates: PromptTemplate[];
   promptDrafts: PromptDraft[];
   reviewSubmissions: ReviewSubmission[];
@@ -57,7 +64,7 @@ type AppState = {
   ensureShareCampaign: (memoryId: string, templateId: string) => ShareCampaign;
   recordShareVisit: (code: string) => string;
   recordShareActivation: (code: string, visitorId: string) => void;
-  recordShareEffectiveUse: (code: string, visitorId: string) => void;
+  recordShareEffectiveUse: (code: string, visitorId: string, detail?: { stayedLongEnough?: boolean; repliedToAgent?: boolean }) => void;
   markInboxMessageRead: (messageId: string) => void;
   markAllInboxMessagesRead: (messageIds: string[]) => void;
 };
@@ -127,9 +134,12 @@ function hydrateShareCampaigns(campaigns: ShareCampaign[]) {
 function normalizePromptDrafts(drafts: PromptDraft[]) {
   return drafts.map((draft) => {
     const fallback = initialPromptDrafts.find((item) => item.memorySpaceId === draft.memorySpaceId);
+    const memory = initialMemorySpaces.find((item) => item.id === draft.memorySpaceId);
+    const baseline = fallback ?? buildPromptDraft(draft.memorySpaceId);
     return {
-      ...fallback,
-      ...draft
+      ...baseline,
+      ...draft,
+      memoryName: memory?.name ?? draft.memoryName ?? baseline.memoryName ?? ""
     } as PromptDraft;
   });
 }
@@ -186,6 +196,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       demoAccounts: state.demoAccounts,
       currentMemoryId: state.currentMemoryId,
       memorySpaces: initialMemorySpaces,
+      promptPersonas: initialPromptPersonaPresets,
+      promptMemories: initialPromptMemoryPresets,
       templates: state.templates,
       promptDrafts: state.promptDrafts,
       reviewSubmissions: state.reviewSubmissions,
@@ -274,16 +286,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           ...current,
           user: {
             ...current.user,
-            balance: Number((current.user.balance + amount + bonus).toFixed(2))
+            cashBalance: Number((current.user.cashBalance + amount).toFixed(2)),
+            tokenBalance: current.user.tokenBalance + (amount + bonus) * 1000
           }
         }));
       },
       savePromptDraft: (draft: PromptDraft) => {
+        const memory = initialMemorySpaces.find((item) => item.id === draft.memorySpaceId);
+        const fallback =
+          initialPromptDrafts.find((item) => item.memorySpaceId === draft.memorySpaceId) ?? buildPromptDraft(draft.memorySpaceId);
         setState((current) => ({
           ...current,
           promptDrafts: [
             ...current.promptDrafts.filter((item) => item.memorySpaceId !== draft.memorySpaceId),
-            draft
+            {
+              ...fallback,
+              ...draft,
+              memoryName: memory?.name ?? draft.memoryName
+            }
           ]
         }));
       },
@@ -321,11 +341,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       },
       importTemplateToMemory: (templateId: string, memoryId: string) => {
         const template = state.templates.find((item) => item.id === templateId);
+        const memory = initialMemorySpaces.find((item) => item.id === memoryId);
+        const existingDraft =
+          state.promptDrafts.find((item) => item.memorySpaceId === memoryId) ??
+          initialPromptDrafts.find((item) => item.memorySpaceId === memoryId) ??
+          buildPromptDraft(memoryId);
         if (!template) return;
 
         const draft: PromptDraft = {
           memorySpaceId: memoryId,
-          memoryName: template.name,
+          memoryName: memory?.name ?? existingDraft.memoryName,
+          personaId: existingDraft.personaId,
+          personaName: existingDraft.personaName,
+          promptMemoryId: existingDraft.promptMemoryId,
+          promptMemoryName: existingDraft.promptMemoryName,
+          promptMemorySnippet: existingDraft.promptMemorySnippet,
           tone: template.personaPrompt,
           personality: template.defaultPersonality ?? "稳定、克制，能根据上下文保持连续表达。",
           persona: template.description,
@@ -455,7 +485,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           )
         }));
       },
-      recordShareEffectiveUse: (code: string, visitorId: string) => {
+      recordShareEffectiveUse: (code: string, visitorId: string, detail) => {
+        if (detail && (!detail.stayedLongEnough || !detail.repliedToAgent)) {
+          return;
+        }
+
         setState((current) => ({
           ...current,
           shareCampaigns: current.shareCampaigns.map((item) =>

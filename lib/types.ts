@@ -5,7 +5,8 @@ export type User = {
   nickname: string;
   avatar: string;
   membership: "Free" | "Plus" | "Pro";
-  balance: number;
+  cashBalance: number;
+  tokenBalance: number;
   email: string;
 };
 
@@ -78,6 +79,26 @@ export type PromptTemplate = {
   createdAt: string;
 };
 
+export type PromptPersonaPreset = {
+  id: string;
+  name: string;
+  summary: string;
+  tone: string;
+  personality: string;
+  persona: string;
+  archetype: string;
+  backstory: string;
+};
+
+export type PromptMemoryPreset = {
+  id: string;
+  personaId: string;
+  name: string;
+  summary: string;
+  memorySnippet: string;
+  lastUpdated: string;
+};
+
 export type MemoryItem = {
   id: string;
   memorySpaceId: string;
@@ -100,6 +121,11 @@ export type RechargePlan = {
 export type PromptDraft = {
   memorySpaceId: string;
   memoryName: string;
+  personaId: string;
+  personaName: string;
+  promptMemoryId: string;
+  promptMemoryName: string;
+  promptMemorySnippet: string;
   tone: string;
   personality: string;
   persona: string;
