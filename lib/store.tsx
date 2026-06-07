@@ -44,6 +44,7 @@ type AppState = {
   currentMemoryId: string;
   memorySpaces: MemorySpace[];
   memoryAssistantDrafts: Record<string, MemoryAssistantDraft[]>;
+  hiddenMemoryEntryIds: Record<string, string[]>;
   promptPersonas: PromptPersonaPreset[];
   promptMemories: PromptMemoryPreset[];
   templates: PromptTemplate[];
@@ -56,6 +57,7 @@ type AppState = {
   logout: () => void;
   setCurrentMemoryId: (id: string) => void;
   deleteMemorySpace: (id: string) => { ok: boolean; reason?: "last_memory" | "not_found" };
+  deleteMemoryEntry: (input: { memorySpaceId: string; entryId: string }) => void;
   updateMemorySummary: (input: { memorySpaceId: string; date: string; summary: string }) => void;
   recharge: (amount: number, bonus: number) => void;
   savePromptDraft: (draft: PromptDraft) => void;
@@ -81,6 +83,7 @@ type PersistedState = {
   memorySpaces: MemorySpace[];
   currentMemoryId: string;
   memoryAssistantDrafts: Record<string, MemoryAssistantDraft[]>;
+  hiddenMemoryEntryIds: Record<string, string[]>;
   templates: PromptTemplate[];
   promptDrafts: PromptDraft[];
   reviewSubmissions: ReviewSubmission[];
@@ -94,6 +97,7 @@ const defaultState: PersistedState = {
   memorySpaces: initialMemorySpaces,
   currentMemoryId: initialMemorySpaces[0].id,
   memoryAssistantDrafts: {},
+  hiddenMemoryEntryIds: {},
   templates: initialPromptTemplates,
   promptDrafts: initialPromptDrafts,
   reviewSubmissions: [],
@@ -162,6 +166,7 @@ function mergePersistedState(parsed: PersistedState) {
     user: { ...defaultState.user, ...parsed.user },
     memorySpaces: parsed.memorySpaces?.length ? parsed.memorySpaces : defaultState.memorySpaces,
     memoryAssistantDrafts: parsed.memoryAssistantDrafts ?? defaultState.memoryAssistantDrafts,
+    hiddenMemoryEntryIds: parsed.hiddenMemoryEntryIds ?? defaultState.hiddenMemoryEntryIds,
     promptDrafts: normalizePromptDrafts(parsed.promptDrafts ?? defaultState.promptDrafts),
     shareCampaigns: hydrateShareCampaigns(parsed.shareCampaigns ?? defaultState.shareCampaigns)
   };
@@ -203,6 +208,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       currentMemoryId: state.currentMemoryId,
       memorySpaces: state.memorySpaces,
       memoryAssistantDrafts: state.memoryAssistantDrafts,
+      hiddenMemoryEntryIds: state.hiddenMemoryEntryIds,
       promptPersonas: initialPromptPersonaPresets,
       promptMemories: initialPromptMemoryPresets,
       templates: state.templates,
@@ -308,12 +314,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             memoryAssistantDrafts: Object.fromEntries(
               Object.entries(current.memoryAssistantDrafts).filter(([memorySpaceId]) => memorySpaceId !== id)
             ),
+            hiddenMemoryEntryIds: Object.fromEntries(
+              Object.entries(current.hiddenMemoryEntryIds).filter(([memorySpaceId]) => memorySpaceId !== id)
+            ),
             promptDrafts: current.promptDrafts.filter((item) => item.memorySpaceId !== id),
             shareCampaigns: current.shareCampaigns.filter((item) => item.memorySpaceId !== id)
           };
         });
 
         return { ok: true as const };
+      },
+      deleteMemoryEntry: ({ memorySpaceId, entryId }) => {
+        setState((current) => ({
+          ...current,
+          hiddenMemoryEntryIds: {
+            ...current.hiddenMemoryEntryIds,
+            [memorySpaceId]: Array.from(new Set([...(current.hiddenMemoryEntryIds[memorySpaceId] ?? []), entryId]))
+          }
+        }));
       },
       updateMemorySummary: ({ memorySpaceId, date, summary }) => {
         const trimmedSummary = summary.trim();

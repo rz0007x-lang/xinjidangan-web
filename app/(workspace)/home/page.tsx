@@ -106,7 +106,7 @@ export default function HomePage() {
                 </button>
               )}
               <p className="mt-1 truncate text-sm text-ink/56">{user.email}</p>
-              <p className="mt-1 text-xs text-ink/46">通知邮箱：审核结果、邀请奖励与系统提醒会发送到这个邮箱。</p>
+              <p className="mt-1 text-xs text-ink/46">通知邮箱：123456@qq.com</p>
               <p className="mt-2 text-xs text-ink/48">账号 ID：{user.id}</p>
             </div>
           </div>
@@ -135,22 +135,21 @@ export default function HomePage() {
               <h2 className="font-editorial text-[24px] text-ink sm:text-[28px]">我的智能体</h2>
               <p className="mt-1 text-sm text-ink/56">这里展示你当前可管理的智能体。你可以新建智能体、导入人设，或进入提示词调试页继续完善设定。</p>
             </div>
-            <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
+            <div className="flex w-full flex-wrap items-center gap-3 sm:w-auto sm:justify-end">
               <Badge tone="info">当前：{memorySpaces.find((item) => item.id === currentMemoryId)?.name}</Badge>
               <Button
-                variant="secondary"
-                className="min-h-9 flex-1 px-4 text-xs sm:flex-none"
+                className="min-h-12 flex-1 rounded-[18px] px-5 text-sm font-semibold shadow-[0_14px_30px_rgba(105,92,86,0.12)] sm:min-w-[148px] sm:flex-none"
                 onClick={() => router.push("/prompt-debug")}
               >
-                <Plus className="h-3.5 w-3.5" />
+                <Plus className="h-4.5 w-4.5" />
                 新建智能体
               </Button>
               <Button
                 variant="secondary"
-                className="min-h-9 flex-1 px-4 text-xs sm:flex-none"
-                onClick={() => router.push("/prompt-debug?template=tpl-official-xiaou")}
+                className="min-h-12 flex-1 rounded-[18px] px-5 text-sm font-semibold sm:min-w-[148px] sm:flex-none"
+                onClick={() => router.push("/prompt-debug?mode=import-doc")}
               >
-                <Download className="h-3.5 w-3.5" />
+                <Download className="h-4.5 w-4.5" />
                 导入人设
               </Button>
             </div>

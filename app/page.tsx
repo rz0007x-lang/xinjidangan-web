@@ -73,6 +73,7 @@ export default function LoginPage() {
   const [resetConfirmPassword, setResetConfirmPassword] = useState("");
   const [resetCode, setResetCode] = useState("");
   const [notice, setNotice] = useState("");
+  const [authNotice, setAuthNotice] = useState("");
   const [error, setError] = useState("");
   const [registerError, setRegisterError] = useState("");
   const [resetError, setResetError] = useState("");
@@ -83,11 +84,12 @@ export default function LoginPage() {
   function closeAuthModal() {
     setAuthMode(null);
     setNotice("");
+    setAuthNotice("");
     setRegisterError("");
     setResetError("");
   }
 
-  function sendCode(accountValue: string, sceneLabel: string) {
+  function sendCode(accountValue: string, sceneLabel: "登录" | "注册" | "找回") {
     const accountValidation = validateAccount(accountValue);
 
     if (!accountValidation.ok) {
@@ -97,7 +99,24 @@ export default function LoginPage() {
     const code = createDemoCode(accountValue);
     const accountKey = normalizeAccount(accountValue);
     setSentCodes((current) => ({ ...current, [accountKey]: code }));
-    setNotice(`${sceneLabel}验证码已发送：${code}。演示环境会直接展示验证码，便于完整走通流程。`);
+
+    const nextNotice = `${sceneLabel}验证码已发送：${code}。演示环境会直接展示并自动回填验证码，方便完整走通流程。`;
+
+    if (sceneLabel === "登录") {
+      setLoginCode(code);
+      setNotice(nextNotice);
+    }
+
+    if (sceneLabel === "注册") {
+      setRegisterCode(code);
+      setAuthNotice(nextNotice);
+    }
+
+    if (sceneLabel === "找回") {
+      setResetCode(code);
+      setAuthNotice(nextNotice);
+    }
+
     setError("");
     setRegisterError("");
     setResetError("");
@@ -122,6 +141,7 @@ export default function LoginPage() {
   function handleSubmit(event?: FormEvent<HTMLFormElement>) {
     event?.preventDefault();
     setNotice("");
+    setAuthNotice("");
     setError("");
 
     const accountValidation = validateAccount(account);
@@ -162,6 +182,7 @@ export default function LoginPage() {
   function handleRegister(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setNotice("");
+    setAuthNotice("");
     setRegisterError("");
 
     const accountValidation = validateAccount(registerAccount);
@@ -198,6 +219,7 @@ export default function LoginPage() {
     setPassword(registerPassword.trim());
     setLoginCode(sentCodes[normalizeAccount(registerAccount)] ?? "");
     setNotice("账号已创建，并已把账号、密码和验证码回填到登录框。你现在可以直接登录。");
+    setAuthNotice("");
     setRegisterAccount("");
     setRegisterPassword("");
     setRegisterConfirmPassword("");
@@ -208,6 +230,7 @@ export default function LoginPage() {
   function handleResetPassword(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setNotice("");
+    setAuthNotice("");
     setResetError("");
 
     const accountValidation = validateAccount(resetAccount);
@@ -244,6 +267,7 @@ export default function LoginPage() {
     setPassword(resetPassword.trim());
     setLoginCode(sentCodes[normalizeAccount(resetAccount)] ?? "");
     setNotice("新密码已设置完成，并已自动回填到登录框，方便你继续完成登录。");
+    setAuthNotice("");
     setResetAccount("");
     setResetPassword("");
     setResetConfirmPassword("");
@@ -365,6 +389,7 @@ export default function LoginPage() {
                 type="button"
                 onClick={() => {
                   setNotice("");
+                  setAuthNotice("");
                   setError("");
                   setAuthMode("register");
                 }}
@@ -376,6 +401,7 @@ export default function LoginPage() {
                 type="button"
                 onClick={() => {
                   setNotice("");
+                  setAuthNotice("");
                   setError("");
                   setAuthMode("reset");
                 }}
@@ -411,6 +437,10 @@ export default function LoginPage() {
                 <X className="h-5 w-5" />
               </button>
             </div>
+
+            {authNotice ? (
+              <p className="mt-4 rounded-[16px] bg-mist px-4 py-3 text-sm leading-6 text-sage">{authNotice}</p>
+            ) : null}
 
             {authMode === "register" ? (
               <form className="mt-6 space-y-4" onSubmit={handleRegister}>
