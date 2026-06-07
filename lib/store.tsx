@@ -54,7 +54,7 @@ type AppState = {
   importTemplateToMemory: (templateId: string, memoryId: string) => void;
   submitReviewLink: (input: { type: "post"; title: string; link: string }) => void;
   updateNickname: (nickname: string) => void;
-  ensureShareCampaign: (memoryId: string) => ShareCampaign;
+  ensureShareCampaign: (memoryId: string, templateId: string) => ShareCampaign;
   recordShareVisit: (code: string) => string;
   recordShareActivation: (code: string, visitorId: string) => void;
   recordShareEffectiveUse: (code: string, visitorId: string) => void;
@@ -90,22 +90,26 @@ const defaultState: PersistedState = {
   inboxReadMessageIds: []
 };
 
-function createShareCode(memoryId: string) {
-  const suffix = memoryId.replace("memory-", "").slice(0, 4).toUpperCase();
-  return `SOUL-${suffix}-${new Date().getFullYear()}`;
+function createShareCode(memoryId: string, templateId: string) {
+  const memorySuffix = memoryId.replace("memory-", "").slice(0, 4).toUpperCase();
+  const templateSuffix = templateId.replace("tpl-", "").replace("official-", "").slice(0, 4).toUpperCase();
+  return `SOUL-${memorySuffix}-${templateSuffix}-${new Date().getFullYear()}`;
 }
 
 function normalizeAccount(account: string) {
   return account.trim().toLowerCase();
 }
 
-function buildShareCampaign(memoryId: string): ShareCampaign {
+function buildShareCampaign(memoryId: string, templateId: string): ShareCampaign {
   const memory = initialMemorySpaces.find((item) => item.id === memoryId) ?? initialMemorySpaces[0];
+  const template = initialPromptTemplates.find((item) => item.id === templateId) ?? initialPromptTemplates[0];
   return {
-    code: createShareCode(memory.id),
+    code: createShareCode(memory.id, template.id),
     memorySpaceId: memory.id,
-    title: `${memory.name}分享链接`,
-    summary: `${memory.name} · ${memory.description}`,
+    templateId: template.id,
+    templateName: template.name,
+    title: `${template.name}分享链接`,
+    summary: `${template.name} · ${template.description}`,
     visits: 0,
     activatedVisitorIds: [],
     effectiveVisitorIds: []
@@ -117,7 +121,7 @@ function hydrateShareCampaigns(campaigns: ShareCampaign[]) {
     return campaigns;
   }
 
-  return initialMemorySpaces.map((memory) => buildShareCampaign(memory.id));
+  return initialMemorySpaces.map((memory) => buildShareCampaign(memory.id, initialPromptTemplates[0].id));
 }
 
 function normalizePromptDrafts(drafts: PromptDraft[]) {
@@ -365,15 +369,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           }
         }));
       },
-      ensureShareCampaign: (memoryId: string) => {
+      ensureShareCampaign: (memoryId: string, templateId: string) => {
         const existing =
-          state.shareCampaigns.find((item) => item.memorySpaceId === memoryId) ??
-          state.shareCampaigns.find((item) => item.code === createShareCode(memoryId));
+          state.shareCampaigns.find((item) => item.memorySpaceId === memoryId && item.templateId === templateId) ??
+          state.shareCampaigns.find((item) => item.code === createShareCode(memoryId, templateId));
         if (existing) {
           return existing;
         }
 
-        const nextCampaign = buildShareCampaign(memoryId);
+        const nextCampaign = buildShareCampaign(memoryId, templateId);
         setState((current) => ({
           ...current,
           shareCampaigns: [nextCampaign, ...current.shareCampaigns]
@@ -382,9 +386,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       },
       recordShareVisit: (code: string) => {
         const currentCampaign = state.shareCampaigns.find((item) => item.code === code);
-        const expectedMemory = initialMemorySpaces.find((item) => createShareCode(item.id) === code);
+        const expectedCampaign = initialMemorySpaces.flatMap((memory) =>
+          state.templates.map((template) => ({
+            memoryId: memory.id,
+            templateId: template.id,
+            code: createShareCode(memory.id, template.id)
+          }))
+        ).find((item) => item.code === code);
 
-        if (!currentCampaign && !expectedMemory) {
+        if (!currentCampaign && !expectedCampaign) {
           return "";
         }
 
@@ -396,9 +406,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           return visitorId;
         }
 
-        if (!currentCampaign && expectedMemory) {
+        if (!currentCampaign && expectedCampaign) {
           const nextCampaign = {
-            ...buildShareCampaign(expectedMemory.id),
+            ...buildShareCampaign(expectedCampaign.memoryId, expectedCampaign.templateId),
             code,
             visits: 1,
             lastVisitedAt: nowIso

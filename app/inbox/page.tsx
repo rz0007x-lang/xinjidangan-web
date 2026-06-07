@@ -108,10 +108,9 @@ export default function InboxPage() {
   );
 
   useEffect(() => {
-    if (selectedMessage?.unread) {
-      markInboxMessageRead(selectedMessage.id);
-    }
-  }, [markInboxMessageRead, selectedMessage]);
+    if (!selectedMessage?.unread) return;
+    markInboxMessageRead(selectedMessage.id);
+  }, [markInboxMessageRead, selectedMessage?.id, selectedMessage?.unread]);
 
   function handleSelectMessage(messageId: string) {
     setSelectedMessageId(messageId);

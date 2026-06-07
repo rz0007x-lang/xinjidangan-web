@@ -25,25 +25,19 @@ export const demoAccounts: DemoAccount[] = [
 export const memorySpaces: MemorySpace[] = [
   {
     id: "memory-home",
-    name: "日常陪伴",
-    description: "记录生活节奏、重要关系和长期偏好，用于日常对话。",
+    name: "陆霆骁",
+    description: "冷漠多疑、控制欲强、做事雷厉风行，外冷内热，别扭温柔。",
     lastUpdated: "2026-05-08 22:18",
-    tone: "温和、稳定、少打扰"
+    tone: ""
   },
   {
     id: "memory-work",
-    name: "工作搭档",
-    description: "沉淀项目背景、协作习惯和决策脉络，辅助复盘。",
+    name: "温叙白",
+    description: "细水长流型偏爱，不搞强势占有，尊重对方社交与选择；暗恋时默默付出，循序渐进，表白温柔郑重，事事优先顾及对方情绪。",
     lastUpdated: "2026-05-07 18:42",
-    tone: "克制、明确、关注行动"
+    tone: "温和、稳定、少打扰"
   },
-  {
-    id: "memory-family",
-    name: "亲密关系",
-    description: "保存重要纪念日、沟通边界和情绪触发点。",
-    lastUpdated: "2026-05-05 09:30",
-    tone: "细腻、耐心、有分寸"
-  }
+
 ];
 
 const xiaoUTone =

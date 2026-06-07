@@ -208,7 +208,7 @@ export default function HomePage() {
                   <p className="mt-3 text-sm leading-6 text-ink/60">{memory.description}</p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     <Badge tone="info">官设智能体：小U</Badge>
-                    {active ? <Badge tone="success">点入后可查看完整提示词</Badge> : null}
+                    {active ? <Badge tone="success">默认已带官方小U</Badge> : null}
                   </div>
                   <div className="mt-4 flex flex-wrap gap-2 text-xs text-ink/50">
                     <span>最近更新：{memory.lastUpdated}</span>

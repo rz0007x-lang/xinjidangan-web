@@ -30,6 +30,8 @@ export type ReviewSubmission = {
 export type ShareCampaign = {
   code: string;
   memorySpaceId: string;
+  templateId: string;
+  templateName: string;
   title: string;
   summary: string;
   visits: number;

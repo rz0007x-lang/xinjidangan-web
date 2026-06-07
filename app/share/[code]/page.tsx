@@ -9,7 +9,7 @@ import { useAppState } from "@/lib/store";
 export default function ShareLandingPage() {
   const params = useParams<{ code: string }>();
   const code = Array.isArray(params?.code) ? params.code[0] : params?.code ?? "";
-  const { shareCampaigns, memorySpaces, recordShareVisit, recordShareActivation, recordShareEffectiveUse } = useAppState();
+  const { shareCampaigns, memorySpaces, templates, recordShareVisit, recordShareActivation, recordShareEffectiveUse } = useAppState();
   const [visitorId, setVisitorId] = useState("");
   const [started, setStarted] = useState(false);
   const [messageCount, setMessageCount] = useState(0);
@@ -20,6 +20,10 @@ export default function ShareLandingPage() {
     if (!campaign) return null;
     return memorySpaces.find((item) => item.id === campaign.memorySpaceId) ?? null;
   }, [campaign, memorySpaces]);
+  const template = useMemo(() => {
+    if (!campaign) return null;
+    return templates.find((item) => item.id === campaign.templateId) ?? null;
+  }, [campaign, templates]);
 
   useEffect(() => {
     if (!code || visitorId) return;
@@ -44,7 +48,7 @@ export default function ShareLandingPage() {
     }
   }
 
-  if (!campaign || !memory) {
+  if (!campaign || !memory || !template) {
     return (
       <main className="min-h-screen bg-linen px-6 py-10">
         <div className="mx-auto max-w-3xl">
@@ -76,9 +80,10 @@ export default function ShareLandingPage() {
 
         <Card className="mx-auto max-w-3xl p-8 text-center">
           <p className="text-sm text-ink/46">当前分享智能体</p>
-          <h2 className="font-editorial mt-3 text-[34px] text-ink">{memory.name}</h2>
-          <p className="mt-4 text-base leading-8 text-ink/64">{memory.description}</p>
-          <p className="mt-4 text-sm text-ink/48">语气：{memory.tone}</p>
+          <h2 className="font-editorial mt-3 text-[34px] text-ink">{template.name}</h2>
+          <p className="mt-4 text-base leading-8 text-ink/64">{template.description}</p>
+          <p className="mt-4 text-sm text-ink/48">所属记忆体：{memory.name}</p>
+          <p className="mt-2 text-sm text-ink/48">语气：{template.personaPrompt}</p>
           <p className="mt-6 text-xs tracking-[0.18em] text-ink/36">分享码 {code}</p>
 
           {!started ? (
@@ -92,7 +97,7 @@ export default function ShareLandingPage() {
             <div className="mt-8 space-y-5 text-left">
               <div className="rounded-[22px] bg-[#fcf6f8] p-5">
                 <p className="text-sm leading-7 text-ink/70">
-                  你好，我是一个被分享给你的智能体。你可以先随便和我说说今天的心情、最近在想的事情，或者只是来打个招呼。
+                  {template.starterGreeting ?? "你好，我是一个被分享给你的智能体。你可以先随便和我说说今天的心情、最近在想的事情，或者只是来打个招呼。"}
                 </p>
               </div>
 

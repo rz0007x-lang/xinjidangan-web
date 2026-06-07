@@ -1,7 +1,7 @@
 "use client";
 
 import { CheckCircle2, CreditCard, WalletCards, X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { Button, Card, inputClass } from "@/components/ui";
@@ -63,7 +63,8 @@ function isValidSubmissionLink(value: string) {
 }
 
 export default function RechargePage() {
-  const { user, recharge, submitReviewLink, currentMemoryId, memorySpaces, shareCampaigns } = useAppState();
+  const { user, recharge, submitReviewLink, currentMemoryId, memorySpaces, shareCampaigns, templates, promptDrafts, ensureShareCampaign } =
+    useAppState();
   const [selectedPlanId, setSelectedPlanId] = useState(rechargePlans[1].id);
   const [paidPlanId, setPaidPlanId] = useState<string | null>(null);
   const [customAmount, setCustomAmount] = useState("");
@@ -81,6 +82,7 @@ export default function RechargePage() {
   const [paymentProcessing, setPaymentProcessing] = useState(false);
   const [paymentRecords, setPaymentRecords] = useState<PaymentRecord[]>([]);
   const [selectedRecord, setSelectedRecord] = useState<PaymentRecord | null>(null);
+  const [activeShareCampaignCode, setActiveShareCampaignCode] = useState("");
   const [failedPayment, setFailedPayment] = useState<{
     orderId: string;
     payable: number;
@@ -106,11 +108,22 @@ export default function RechargePage() {
   const selectedPaymentMethod = paymentMethods.find((method) => method.id === paymentMethod) ?? paymentMethods[0];
   const selectedCoupon = coupons.find((coupon) => coupon.id === selectedCouponId) ?? null;
   const currentMemory = memorySpaces.find((item) => item.id === currentMemoryId) ?? memorySpaces[0];
-  const shareCampaign = shareCampaigns.find((item) => item.memorySpaceId === currentMemory.id) ?? shareCampaigns[0];
+  const currentDraft = promptDrafts.find((item) => item.memorySpaceId === currentMemory.id) ?? promptDrafts[0];
+  const shareableTemplates = useMemo(() => {
+    const activeTemplate = templates.find((item) => item.name === currentDraft.memoryName && item.systemPrompt === currentDraft.backstory);
+    const ranked = activeTemplate ? [activeTemplate, ...templates.filter((item) => item.id !== activeTemplate.id)] : templates;
+    return ranked.filter((item) => item.auditStatus === "approved" || item.source === "user");
+  }, [currentDraft.backstory, currentDraft.memoryName, templates]);
+  const [selectedShareTemplateId, setSelectedShareTemplateId] = useState("");
+  const selectedShareTemplate = shareableTemplates.find((item) => item.id === selectedShareTemplateId) ?? shareableTemplates[0] ?? null;
+  const existingShareCampaign = selectedShareTemplate
+    ? shareCampaigns.find((item) => item.memorySpaceId === currentMemory.id && item.templateId === selectedShareTemplate.id)
+    : null;
+  const shareCampaign = existingShareCampaign ?? shareCampaigns.find((item) => item.code === activeShareCampaignCode) ?? null;
   const tokenBalance = Math.round(user.balance * 1000);
   const inviteCode = "US-2026-12";
-  const shareCode = shareCampaign.code;
-  const shareLink = `http://localhost:3000/share/${shareCode}`;
+  const shareCode = shareCampaign?.code ?? "";
+  const shareLink = shareCode ? `http://localhost:3000/share/${shareCode}` : "";
   const usage = [
     { label: "提示词调试", value: 48, color: "bg-[#d7a9c2]" },
     { label: "聊天模拟", value: 32, color: "bg-[#cfe4e8]" },
@@ -161,7 +174,18 @@ export default function RechargePage() {
     }
   ];
   const activeNoticeData = notices.find((notice) => notice.id === activeNotice) ?? null;
-  const successfulPaymentRecords = paymentRecords.filter((record) => record.status === "success");
+
+  useEffect(() => {
+    if (!selectedShareTemplateId && shareableTemplates[0]?.id) {
+      setSelectedShareTemplateId(shareableTemplates[0].id);
+    }
+  }, [selectedShareTemplateId, shareableTemplates]);
+
+  useEffect(() => {
+    if (!selectedShareTemplate) return;
+    const campaign = ensureShareCampaign(currentMemory.id, selectedShareTemplate.id);
+    setActiveShareCampaignCode(campaign.code);
+  }, [currentMemory.id, ensureShareCampaign, selectedShareTemplate]);
 
   async function handleCopyInviteCode() {
     try {
@@ -560,20 +584,43 @@ export default function RechargePage() {
                   {activeNotice === "share" ? (
                     <div className="mt-5 space-y-4">
                       <div className="rounded-[18px] bg-[#fbf7f8] px-5 py-4 text-base font-medium text-ink/72">
+                        <div className="mb-4">
+                          <p className="text-sm text-ink/58">选择要分享的智能体</p>
+                          <select
+                            className={`${inputClass} mt-2 min-h-12 rounded-[16px]`}
+                            value={selectedShareTemplate?.id ?? ""}
+                            onChange={(event) => {
+                              setSelectedShareTemplateId(event.target.value);
+                              setShareCopied(false);
+                              setCopyError("");
+                            }}
+                          >
+                            {shareableTemplates.map((template) => (
+                              <option key={template.id} value={template.id}>
+                                {template.name} · {template.source === "official" ? "官方" : template.source === "user" ? "我的智能体" : "社区参考"}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
                         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                           <div>
-                            <p className="text-sm text-ink/58">当前智能体</p>
-                            <p className="mt-1 text-lg font-semibold text-ink">{currentMemory.name}</p>
+                            <p className="text-sm text-ink/58">当前分享智能体</p>
+                            <p className="mt-1 text-lg font-semibold text-ink">{selectedShareTemplate?.name ?? currentDraft.memoryName}</p>
+                            <p className="mt-2 text-sm leading-6 text-ink/56">
+                              记忆体「{currentMemory.name}」下，不同智能体会对应不同分享链接和不同分享页。
+                            </p>
                             <span className="mt-3 inline-flex rounded-full bg-[#eadbe7] px-4 py-2 text-sm text-ink">{shareCode}</span>
                             <p className="mt-3 break-all text-sm leading-6 text-ink/56">{shareLink}</p>
                           </div>
                           <div className="flex flex-col gap-3 sm:items-end">
-                            <Button variant="secondary" className="px-5" onClick={handleCopyShareCode}>
+                            <Button variant="secondary" className="px-5" onClick={handleCopyShareCode} disabled={!shareLink}>
                               {shareCopied ? "已复制链接" : "复制分享链接"}
                             </Button>
-                            <Link href={`/share/${shareCode}`} target="_blank">
-                              <Button className="px-5">打开分享页</Button>
-                            </Link>
+                            {shareCode ? (
+                              <Link href={`/share/${shareCode}`} target="_blank">
+                                <Button className="px-5">打开分享页</Button>
+                              </Link>
+                            ) : null}
                           </div>
                         </div>
                       </div>
@@ -600,64 +647,7 @@ export default function RechargePage() {
           </Card>
         </div>
 
-        <div className="grid gap-5 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-          <Card className="p-6">
-            <div className="mb-5 flex items-center justify-between gap-3">
-              <div>
-                <h2 className="font-editorial text-[28px] text-ink">可用优惠券</h2>
-                <p className="mt-2 text-sm leading-6 text-ink/56">支付前可选择优惠券，系统会按金额门槛自动抵扣。</p>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-                {coupons.map((coupon) => {
-                  const available = rechargeAmount >= coupon.minAmount;
-                  const selected = selectedCouponId === coupon.id;
-
-                  return (
-                    <button
-                    key={coupon.id}
-                    type="button"
-                      className={`w-full rounded-[22px] border p-4 text-left transition ${
-                      !available
-                        ? "border-dashed border-[#e8dde3] bg-[#faf6f7] text-ink/42"
-                        : ""
-                    } ${
-                      selected
-                        ? "border-[#d8caed] bg-[#f5eef8] shadow-[0_10px_24px_rgba(126,110,135,0.08)]"
-                        : "border-line bg-white hover:border-[#d8caed]"
-                    }`}
-                    onClick={() => {
-                      if (!available) return;
-                      setSelectedCouponId(selected ? null : coupon.id);
-                    }}
-                  >
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <h3 className="text-base font-semibold text-ink">{coupon.label}</h3>
-                        <p className="mt-2 text-sm text-ink/58">{coupon.description}</p>
-                        {!available ? (
-                          <p className="mt-2 text-xs text-[#b27a87]">当前金额未达门槛，还差 ¥{(coupon.minAmount - rechargeAmount).toFixed(2)}</p>
-                        ) : null}
-                      </div>
-                      <span
-                        className={`rounded-full px-3 py-1 text-xs font-medium ${
-                          !available
-                            ? "bg-[#f3eaee] text-[#b27a87]"
-                            : selected
-                              ? "bg-[#eadbe7] text-ink"
-                              : "bg-[#eef4f4] text-sage"
-                        }`}
-                      >
-                        {!available ? `满 ¥${coupon.minAmount} 可用` : selected ? "已选中" : "可使用"}
-                      </span>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </Card>
-
+        <div className="grid gap-5">
           <Card className="p-6">
             <div className="mb-5">
               <h2 className="font-editorial text-[28px] text-ink">订单记录</h2>
@@ -701,60 +691,6 @@ export default function RechargePage() {
             </div>
           </Card>
         </div>
-
-        <Card className="p-6">
-          <div className="mb-5 flex items-start justify-between gap-4">
-            <div>
-              <h2 className="font-editorial text-[28px] text-ink">token 到账明细</h2>
-              <p className="mt-2 text-sm leading-6 text-ink/56">成功支付后会记录实际到账金额、赠送奖励和折算后的 tokens 数量。</p>
-            </div>
-            <div className="rounded-[20px] bg-[#f6f0f2] px-4 py-3 text-right">
-              <p className="text-xs uppercase tracking-[0.16em] text-ink/42">累计到账</p>
-              <p className="mt-2 font-editorial text-[28px] leading-none text-ink">
-                {successfulPaymentRecords
-                  .reduce((sum, record) => sum + record.amount + record.bonus, 0)
-                  .toFixed(2)}
-              </p>
-              <p className="mt-1 text-xs text-ink/46">约 {successfulPaymentRecords.reduce((sum, record) => sum + (record.amount + record.bonus) * 1000, 0).toLocaleString()} tokens</p>
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            {successfulPaymentRecords.length > 0 ? (
-              successfulPaymentRecords.map((record) => {
-                const creditedAmount = record.amount + record.bonus;
-                return (
-                  <div key={`${record.orderId}-ledger`} className="rounded-[22px] border border-line bg-white p-4">
-                    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                      <div>
-                        <p className="text-sm font-semibold text-ink">订单 {record.orderId}</p>
-                        <p className="mt-1 text-xs text-ink/46">{record.createdAt} · {record.methodLabel}</p>
-                      </div>
-                      <div className="grid gap-3 text-sm text-ink/62 sm:grid-cols-3">
-                        <div>
-                          <p className="text-xs text-ink/42">实际支付</p>
-                          <p className="mt-1 font-semibold text-ink">¥{record.payable.toFixed(2)}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-ink/42">到账余额</p>
-                          <p className="mt-1 font-semibold text-sage">¥{creditedAmount.toFixed(2)}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-ink/42">折算 tokens</p>
-                          <p className="mt-1 font-semibold text-ink">{Math.round(creditedAmount * 1000).toLocaleString()}</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })
-            ) : (
-              <div className="rounded-[22px] border border-dashed border-line bg-white px-5 py-8 text-sm leading-7 text-ink/48">
-                暂无到账账单。完成一笔成功充值后，这里会展示 token 到账明细。
-              </div>
-            )}
-          </div>
-        </Card>
       </div>
 
       {paymentOpen ? (
@@ -817,6 +753,69 @@ export default function RechargePage() {
                   </button>
                 );
               })}
+            </div>
+
+            <div className="mt-6">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-base font-semibold text-ink">可用优惠券</h3>
+                  <p className="mt-1 text-sm text-ink/56">在付款前勾选可使用的优惠券，系统会自动抵扣。</p>
+                </div>
+              </div>
+              <div className="space-y-3">
+                {coupons.map((coupon) => {
+                  const available = rechargeAmount >= coupon.minAmount;
+                  const selected = selectedCouponId === coupon.id;
+
+                  return (
+                    <button
+                      key={coupon.id}
+                      type="button"
+                      className={`w-full rounded-[20px] border px-5 py-4 text-left transition ${
+                        !available
+                          ? "border-dashed border-[#e8dde3] bg-[#faf6f7] text-ink/42"
+                          : selected
+                            ? "border-[#d8caed] bg-[#f6eef6] shadow-[0_10px_24px_rgba(126,110,135,0.08)]"
+                            : "border-line bg-white hover:border-[#e6d3dc] hover:bg-[#fcf7fa]"
+                      }`}
+                      onClick={() => {
+                        if (!available) return;
+                        setSelectedCouponId(selected ? null : coupon.id);
+                      }}
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <h4 className="text-sm font-semibold text-ink">{coupon.label}</h4>
+                          <p className="mt-1 text-sm leading-6 text-ink/58">{coupon.description}</p>
+                          {!available ? (
+                            <p className="mt-2 text-xs text-[#b27a87]">当前金额未达门槛，还差 ¥{(coupon.minAmount - rechargeAmount).toFixed(2)}</p>
+                          ) : null}
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span
+                            className={`rounded-full px-3 py-1 text-xs font-medium ${
+                              !available
+                                ? "bg-[#f3eaee] text-[#b27a87]"
+                                : selected
+                                  ? "bg-[#eadbe7] text-ink"
+                                  : "bg-[#eef4f4] text-sage"
+                            }`}
+                          >
+                            {!available ? `满 ¥${coupon.minAmount} 可用` : selected ? "已勾选" : "可使用"}
+                          </span>
+                          <span
+                            className={`mt-0.5 flex h-5 w-5 items-center justify-center rounded-full border ${
+                              selected ? "border-sage bg-sage text-white" : "border-line bg-white"
+                            }`}
+                          >
+                            {selected ? "✓" : ""}
+                          </span>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
