@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { RefreshCw, Settings2, Trash2 } from "lucide-react";
+import { Download, Plus, RefreshCw, Settings2, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Badge, Button, Card, SectionHeader, inputClass } from "@/components/ui";
 import { useAppState } from "@/lib/store";
@@ -48,12 +48,12 @@ export default function HomePage() {
       <SectionHeader
         eyebrow="Profile"
         title="个人中心"
-        description="这里只展示账户信息详情与我的记忆体。你可以查看账户状态，并切换当前使用的记忆体。"
+        description="这里展示账户基础信息与我的智能体。通知结果会直接发送到你的邮箱，你也可以在这里新建或导入智能体。"
       />
 
-      <div className="grid gap-5 xl:grid-cols-[360px_minmax(0,1fr)]">
-        <Card className="p-5">
-          <div className="flex items-start gap-4">
+      <div className="space-y-5">
+        <Card className="p-4 sm:p-5">
+          <div className="flex items-start gap-3 sm:gap-4">
             <div className="flex h-16 w-16 items-center justify-center rounded-[20px] bg-clay text-xl font-semibold text-white">
               {user.avatar}
             </div>
@@ -106,11 +106,12 @@ export default function HomePage() {
                 </button>
               )}
               <p className="mt-1 truncate text-sm text-ink/56">{user.email}</p>
+              <p className="mt-1 text-xs text-ink/46">通知邮箱：审核结果、邀请奖励与系统提醒会发送到这个邮箱。</p>
               <p className="mt-2 text-xs text-ink/48">账号 ID：{user.id}</p>
             </div>
           </div>
 
-          <div className="mt-6 grid grid-cols-2 gap-3">
+          <div className="mt-6 grid gap-3 sm:grid-cols-2">
             <div className="rounded-[18px] bg-mist p-4">
               <p className="text-xs text-ink/48">会员状态</p>
               <p className="mt-2 text-lg font-semibold text-ink">{user.membership}</p>
@@ -128,16 +129,34 @@ export default function HomePage() {
           </div>
         </Card>
 
-        <Card className="p-5">
+        <Card className="p-4 sm:p-5">
           <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h2 className="font-editorial text-[28px] text-ink">我的记忆体</h2>
-              <p className="mt-1 text-sm text-ink/56">记忆体记录的是用户记忆信息，不同智能体设定可以切换不同记忆体，也可以共享同一个记忆体。</p>
+              <h2 className="font-editorial text-[24px] text-ink sm:text-[28px]">我的智能体</h2>
+              <p className="mt-1 text-sm text-ink/56">这里展示你当前可管理的智能体。你可以新建智能体、导入人设，或进入提示词调试页继续完善设定。</p>
             </div>
-            <Badge tone="info">当前：{memorySpaces.find((item) => item.id === currentMemoryId)?.name}</Badge>
+            <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
+              <Badge tone="info">当前：{memorySpaces.find((item) => item.id === currentMemoryId)?.name}</Badge>
+              <Button
+                variant="secondary"
+                className="min-h-9 flex-1 px-4 text-xs sm:flex-none"
+                onClick={() => router.push("/prompt-debug")}
+              >
+                <Plus className="h-3.5 w-3.5" />
+                新建智能体
+              </Button>
+              <Button
+                variant="secondary"
+                className="min-h-9 flex-1 px-4 text-xs sm:flex-none"
+                onClick={() => router.push("/prompt-debug?template=tpl-official-xiaou")}
+              >
+                <Download className="h-3.5 w-3.5" />
+                导入人设
+              </Button>
+            </div>
           </div>
 
-          <div className="grid gap-4 lg:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {memorySpaces.map((memory) => {
               const active = memory.id === currentMemoryId;
 
@@ -148,15 +167,15 @@ export default function HomePage() {
                     active ? "border-[#d7c9ea] bg-[#fbf7fc] shadow-[0_10px_28px_rgba(120,94,124,0.06)]" : "border-line bg-white hover:border-sage/50"
                   }`}
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-3">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0 flex items-center gap-3">
                       <h3 className="font-semibold text-ink">{memory.name}</h3>
                       {active ? <Badge tone="success">使用中</Badge> : <RefreshCw className="h-4 w-4 text-ink/35" />}
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <Button
                         variant="secondary"
-                        className="min-h-8 px-3 text-xs"
+                        className="min-h-8 flex-1 px-3 text-xs sm:flex-none"
                         onClick={() => {
                           setCurrentMemoryId(memory.id);
                           router.push("/prompt-debug");
@@ -167,7 +186,7 @@ export default function HomePage() {
                       </Button>
                       <Button
                         variant="ghost"
-                        className="min-h-8 px-3 text-xs text-[#b86474]"
+                        className="min-h-8 flex-1 px-3 text-xs text-[#b86474] sm:flex-none"
                         onClick={() => handleDeleteMemorySpace(memory.id, memory.name)}
                       >
                         <Trash2 className="h-3.5 w-3.5" />

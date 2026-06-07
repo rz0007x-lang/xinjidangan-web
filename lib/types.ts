@@ -43,17 +43,6 @@ export type ShareCampaign = {
   lastEffectiveAt?: string;
 };
 
-export type InboxMessage = {
-  id: string;
-  from: "小U" | "系统";
-  title: string;
-  preview: string;
-  content: string;
-  createdAt: string;
-  category: "invite" | "coupon" | "system";
-  unread: boolean;
-};
-
 export type MemorySpace = {
   id: string;
   name: string;
@@ -107,6 +96,11 @@ export type MemoryItem = {
   summary: string;
   emotion: "calm" | "warm" | "conflict" | "growth";
   connections: string[];
+};
+
+export type MemoryAssistantDraft = {
+  date: string;
+  summary: string;
 };
 
 export type RechargePlan = {

@@ -4,7 +4,7 @@ import type { ButtonHTMLAttributes, HTMLAttributes, ReactNode } from "react";
 export function Card({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={clsx("rounded-[24px] border border-line bg-white/90 shadow-soft backdrop-blur", className)}
+      className={clsx("rounded-[20px] border border-line bg-white/90 shadow-soft backdrop-blur sm:rounded-[24px]", className)}
       {...props}
     />
   );
@@ -25,7 +25,7 @@ export function SectionHeader({
     <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
       <div>
         {eyebrow ? <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.22em] text-ink/42">{eyebrow}</p> : null}
-        <h1 className="font-editorial text-[30px] font-semibold leading-tight text-ink sm:text-[38px]">{title}</h1>
+        <h1 className="font-editorial text-[26px] font-semibold leading-tight text-ink sm:text-[38px]">{title}</h1>
         {description ? <p className="mt-2 max-w-3xl text-sm leading-6 text-ink/62">{description}</p> : null}
       </div>
       {action ? <div className="w-full sm:w-auto sm:shrink-0">{action}</div> : null}
@@ -80,4 +80,4 @@ export const inputClass =
   "min-h-10 w-full rounded-[14px] border border-line bg-white/72 px-3 py-2 text-sm text-ink outline-none transition placeholder:text-ink/35 focus:border-sage focus:ring-2 focus:ring-sage/15";
 
 export const textareaClass =
-  "w-full rounded-[14px] border border-line bg-white/72 px-3 py-2 text-sm leading-6 text-ink outline-none transition placeholder:text-ink/35 focus:border-sage focus:ring-2 focus:ring-sage/15";
+  "w-full min-w-0 rounded-[14px] border border-line bg-white/72 px-3 py-2 text-sm leading-6 text-ink outline-none transition placeholder:text-ink/35 focus:border-sage focus:ring-2 focus:ring-sage/15";

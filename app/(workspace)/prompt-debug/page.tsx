@@ -3,7 +3,7 @@
 import { FormEvent, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
-import { Bot, Save, Send, UserRound } from "lucide-react";
+import { Bot, Save, Send, Sparkles, UserRound } from "lucide-react";
 import { MemorySwitcher } from "@/components/MemorySwitcher";
 import { Badge, Button, Card, SectionHeader, textareaClass } from "@/components/ui";
 import { useAppState, useCurrentMemory } from "@/lib/store";
@@ -14,7 +14,43 @@ type ChatMessage = {
   content: string;
 };
 
+type AssistantMessage = {
+  role: "user" | "assistant";
+  content: string;
+};
+
 const baseModelOptions = ["DeepSeek", "Kimi", "Doubao", "Qwen", "GPT-4o"];
+
+function buildAssistantReply(question: string, draft: PromptDraft, linkedMemoryName: string) {
+  const lowerQuestion = question.toLowerCase();
+  const focus =
+    lowerQuestion.includes("语气") || lowerQuestion.includes("tone")
+      ? "语气"
+      : lowerQuestion.includes("性格")
+        ? "性格"
+        : lowerQuestion.includes("人设") || lowerQuestion.includes("persona")
+          ? "人设"
+          : lowerQuestion.includes("系统") || lowerQuestion.includes("背景")
+            ? "系统提示词"
+            : "整体设定";
+
+  const suggestions = [
+    `现在这套设定的核心是「${draft.personaName} + ${draft.promptMemoryName}」，并且会读取「${linkedMemoryName}」这份记忆体，所以先确保 ${focus} 和这三个锚点说的是同一个人。`,
+    `如果你想让回复更稳一点，可以把语气从「${draft.tone.slice(0, 18)}」改成更具体的行为约束，例如“默认 2 到 4 句，先接情绪，再给半步建议”。`,
+    `你的人设里已经有「${draft.persona.slice(0, 26)}」，下一步建议补“会怎么回应”而不是只写“是什么样的人”，这样模型更容易稳定执行。`,
+    `系统提示词建议只保留边界、优先级和禁忌，不要和人设字段重复太多；重复内容越多，后面越容易显得啰嗦。`
+  ];
+
+  if (focus === "系统提示词") {
+    suggestions[1] = `系统提示词里优先写清三件事：身份边界、回复流程、不能做什么。像现在这样的大段背景设定，可以继续保留，但最好再补一句最关键的执行原则。`;
+  }
+
+  if (focus === "语气") {
+    suggestions[2] = `语气字段不要只写抽象词，最好补一句句式约束。比如“少反问、少感叹号、少模板安慰，默认短句分段”，这样小U更容易帮你收敛输出。`;
+  }
+
+  return `我是提示词助手小U。你这个问题更适合从「${focus}」下手。\n\n1. ${suggestions[0]}\n2. ${suggestions[1]}\n3. ${suggestions[2]}\n4. ${suggestions[3]}`;
+}
 
 export default function PromptDebugPage() {
   return (
@@ -54,10 +90,17 @@ function PromptDebugContent() {
 
   const [draft, setDraft] = useState<PromptDraft>(() => currentDraft ?? promptDrafts[0]);
   const [message, setMessage] = useState("");
+  const [assistantQuestion, setAssistantQuestion] = useState("");
   const [chat, setChat] = useState<ChatMessage[]>([
     {
       role: "ai",
       content: "可以发送一条测试消息。我会基于当前记忆体设定返回 mock 回复。"
+    }
+  ]);
+  const [assistantChat, setAssistantChat] = useState<AssistantMessage[]>([
+    {
+      role: "assistant",
+      content: "我是提示词助手小U。你可以直接问我：这套人设怎么更稳定、语气怎么更像真人、系统提示词怎么精简。"
     }
   ]);
   const [saved, setSaved] = useState(false);
@@ -98,6 +141,12 @@ function PromptDebugContent() {
         {
           role: "ai",
           content: `已切换到「${currentMemory.name}」。当前记忆体命名已同步为「${currentMemory.name}」。`
+        }
+      ]);
+      setAssistantChat([
+        {
+          role: "assistant",
+          content: `已切换到「${currentMemory.name}」这组草稿。我可以继续帮你优化「${nextDraft.personaName} + ${nextDraft.promptMemoryName}」的提示词写法。`
         }
       ]);
     }
@@ -193,6 +242,22 @@ function PromptDebugContent() {
     ]);
   }
 
+  function handleAssistantAsk(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const trimmed = assistantQuestion.trim();
+    if (!trimmed) return;
+
+    setAssistantQuestion("");
+    setAssistantChat((current) => [
+      ...current,
+      { role: "user", content: trimmed },
+      {
+        role: "assistant",
+        content: buildAssistantReply(trimmed, draft, linkedMemorySpace.name)
+      }
+    ]);
+  }
+
   return (
     <div className="mx-auto max-w-7xl space-y-6">
         <SectionHeader
@@ -203,15 +268,15 @@ function PromptDebugContent() {
         />
 
         <div className="grid gap-5 xl:grid-cols-[minmax(0,1.08fr)_minmax(380px,0.92fr)] xl:items-stretch">
-          <Card className="flex min-h-[760px] flex-col p-6">
+          <Card className="flex flex-col p-4 sm:p-6 xl:min-h-[760px]">
             <div className="mb-6 flex flex-col gap-3 border-b border-line/80 pb-5 lg:flex-row lg:items-end lg:justify-between">
               <div>
-                <h2 className="font-editorial text-[28px] text-ink">编辑区</h2>
+                <h2 className="font-editorial text-[24px] text-ink sm:text-[28px]">编辑区</h2>
                 <p className="mt-1 text-sm leading-6 text-ink/56">当前记忆体：{currentMemory.name}</p>
               </div>
             </div>
 
-            <div className="grid flex-1 content-start gap-5 md:grid-cols-2">
+            <div className="grid flex-1 content-start gap-4 sm:gap-5 md:grid-cols-2">
               <label className="md:col-span-2">
                 <span className="mb-2 block text-sm font-medium text-ink/72">记忆体命名</span>
                 <textarea
@@ -258,7 +323,7 @@ function PromptDebugContent() {
               <label>
                 <span className="mb-2 block text-sm font-medium text-ink/72">语气</span>
                 <textarea
-                  className={`${textareaClass} min-h-32`}
+                  className={`${textareaClass} min-h-28 sm:min-h-32`}
                   value={draft.tone}
                   onChange={(event) => updateDraft("tone", event.target.value, 80, "语气")}
                 />
@@ -266,7 +331,7 @@ function PromptDebugContent() {
               <label>
                 <span className="mb-2 block text-sm font-medium text-ink/72">性格</span>
                 <textarea
-                  className={`${textareaClass} min-h-32`}
+                  className={`${textareaClass} min-h-28 sm:min-h-32`}
                   value={draft.personality}
                   onChange={(event) => updateDraft("personality", event.target.value, 120, "性格")}
                 />
@@ -274,7 +339,7 @@ function PromptDebugContent() {
               <label>
                 <span className="mb-2 block text-sm font-medium text-ink/72">人设</span>
                 <textarea
-                  className={`${textareaClass} min-h-36`}
+                  className={`${textareaClass} min-h-32 sm:min-h-36`}
                   value={draft.persona}
                   onChange={(event) => updateDraft("persona", event.target.value, 220, "人设")}
                 />
@@ -317,7 +382,7 @@ function PromptDebugContent() {
               <label className="md:col-span-2">
                 <span className="mb-2 block text-sm font-medium text-ink/72">系统提示词 / 背景设定</span>
                 <textarea
-                  className={`${textareaClass} min-h-40`}
+                  className={`${textareaClass} min-h-36 sm:min-h-40`}
                   value={draft.backstory}
                   onChange={(event) => updateDraft("backstory", event.target.value, 12000, "系统提示词")}
                 />
@@ -353,12 +418,57 @@ function PromptDebugContent() {
             {saved ? <p className="mt-3 text-sm text-sage">已保存「{draft.personaName} + {draft.promptMemoryName}」到「{currentMemory.name}」。</p> : null}
           </Card>
 
-          <Card className="flex min-h-[760px] flex-col overflow-hidden p-6">
+          <Card className="flex flex-col overflow-hidden p-4 sm:p-6 xl:min-h-[760px]">
             <div className="border-b border-line/80 pb-5">
-              <h2 className="font-editorial text-[28px] text-ink">调试聊天</h2>
+              <h2 className="font-editorial text-[24px] text-ink sm:text-[28px]">小U 助手</h2>
+              <p className="mt-1 text-sm leading-6 text-ink/56">先和小U问答，获取提示词优化建议；下方仍可继续做 mock 对话。</p>
+            </div>
+            <div className="space-y-4 border-b border-line/80 py-5">
+              <div className="max-h-[28vh] space-y-4 overflow-y-auto pr-1">
+                {assistantChat.map((item, index) => {
+                  const assistant = item.role === "assistant";
+                  return (
+                    <div key={`${item.role}-${index}`} className={`flex gap-3 ${assistant ? "" : "justify-end"}`}>
+                      {assistant ? (
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[14px] bg-[#eadbe7] text-ink">
+                          <Sparkles className="h-4 w-4" />
+                        </span>
+                      ) : null}
+                      <div
+                        className={`max-w-[88%] whitespace-pre-line rounded-[18px] px-3 py-2 text-sm leading-6 sm:max-w-[82%] ${
+                          assistant ? "bg-[#fbf4f8] text-ink/76" : "bg-[#eadbe7] text-ink"
+                        }`}
+                      >
+                        {item.content}
+                      </div>
+                      {!assistant ? (
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[14px] bg-clay text-white">
+                          <UserRound className="h-4 w-4" />
+                        </span>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
+              <form className="flex flex-col gap-2 sm:flex-row" onSubmit={handleAssistantAsk}>
+                <input
+                  className="min-h-10 flex-1 rounded-[18px] border border-line bg-white/94 px-3 text-sm outline-none focus:border-sage"
+                  value={assistantQuestion}
+                  onChange={(event) => setAssistantQuestion(event.target.value)}
+                  placeholder="问小U：这段人设太空泛，怎么改得更稳？"
+                />
+                <Button type="submit" className="sm:px-4">
+                  <Sparkles className="h-4 w-4" />
+                  询问小U
+                </Button>
+              </form>
+            </div>
+
+            <div className="border-b border-line/80 pb-5 pt-5">
+              <h2 className="font-editorial text-[24px] text-ink sm:text-[28px]">调试聊天</h2>
               <p className="mt-1 text-sm leading-6 text-ink/56">模拟对话会同时参考当前 persona 字段和所选记忆体内容。</p>
             </div>
-            <div className="flex-1 space-y-4 overflow-y-auto py-5">
+            <div className="max-h-[50vh] flex-1 space-y-4 overflow-y-auto py-5 xl:max-h-none">
               {chat.map((item, index) => {
                 const ai = item.role === "ai";
                 return (
@@ -369,7 +479,7 @@ function PromptDebugContent() {
                       </span>
                     ) : null}
                     <div
-                      className={`max-w-[82%] rounded-[18px] px-3 py-2 text-sm leading-6 ${
+                      className={`max-w-[88%] rounded-[18px] px-3 py-2 text-sm leading-6 sm:max-w-[82%] ${
                         ai ? "bg-mist text-ink/76" : "bg-sage text-white"
                       }`}
                     >

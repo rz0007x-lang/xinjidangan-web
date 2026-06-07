@@ -1,6 +1,5 @@
 import type {
   DemoAccount,
-  InboxMessage,
   MemoryItem,
   MemorySpace,
   PromptDraft,
@@ -505,38 +504,5 @@ export const rechargePlans: RechargePlan[] = [
     amount: 698,
     bonus: 188,
     description: "适合团队或重度长期陪伴场景"
-  }
-];
-
-export const inboxMessages: InboxMessage[] = [
-  {
-    id: "msg-001",
-    from: "小U",
-    title: "你的邀请码已生成",
-    preview: "邀请码 US-2026-12 已可使用，邀请新用户后双方都能获得对话奖励。",
-    content: "邀请码 US-2026-12 已可使用。你可以把它发送给新朋友，完成绑定后双方都会收到对应的对话奖励。",
-    createdAt: "2026-06-04 16:20",
-    category: "invite",
-    unread: true
-  },
-  {
-    id: "msg-002",
-    from: "系统",
-    title: "你收到一张 189 元优惠券",
-    preview: "本月创作激励活动已发放优惠券，可用于充值页直接抵扣。",
-    content: "恭喜你获得 189 元 tokens 优惠券一张，可在充值页使用。有效期至 2026-06-30，请留意及时使用。",
-    createdAt: "2026-06-03 21:05",
-    category: "coupon",
-    unread: true
-  },
-  {
-    id: "msg-003",
-    from: "小U",
-    title: "发帖征集奖励审核中",
-    preview: "你提交的发帖链接已经进入审核队列，审核通过后会自动发放奖励。",
-    content: "你最近提交的发帖链接已进入审核队列。审核通过后，奖励会自动发放到账号余额或对话轮次中，请耐心等待。",
-    createdAt: "2026-06-02 18:42",
-    category: "system",
-    unread: false
   }
 ];

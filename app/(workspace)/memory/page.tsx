@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { CalendarDays, ChevronLeft, ChevronRight, Clock3 } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Clock3, Save, WandSparkles } from "lucide-react";
 import { MemorySwitcher } from "@/components/MemorySwitcher";
-import { Badge, Card, SectionHeader } from "@/components/ui";
+import { Badge, Button, Card, SectionHeader, textareaClass } from "@/components/ui";
 import { memoryItems } from "@/lib/mock-data";
 import { useAppState } from "@/lib/store";
 
@@ -75,8 +75,11 @@ function getMonthMatrix(monthDate: Date, datesWithItems: Set<string>) {
 }
 
 export default function MemoryPage() {
-  const { currentMemoryId } = useAppState();
+  const { currentMemoryId, currentMemoryId: memorySpaceId, memoryAssistantDrafts, updateMemorySummary } = useAppState();
   const items = memoryItems.filter((item) => item.memorySpaceId === currentMemoryId);
+  const [assistantMode, setAssistantMode] = useState<"idle" | "editing">("idle");
+  const [assistantDraft, setAssistantDraft] = useState("");
+  const [assistantFeedback, setAssistantFeedback] = useState("");
 
   const dates = useMemo(() => Array.from(new Set(items.map((item) => item.date))).sort(), [items]);
   const [selectedDate, setSelectedDate] = useState(dates[dates.length - 1] ?? "");
@@ -100,6 +103,21 @@ export default function MemoryPage() {
   const visibleMonthKey = toMonthKey(visibleMonth);
   const monthDates = dates.filter((date) => date.startsWith(visibleMonthKey));
   const itemsForSelectedDate = items.filter((item) => item.date === selectedDate);
+  const assistantOverride = selectedDate ? memoryAssistantDrafts[memorySpaceId]?.find((item) => item.date === selectedDate) : undefined;
+  const displayedItems = assistantOverride
+    ? [
+        {
+          id: `${memorySpaceId}-${selectedDate}-assistant`,
+          summary: assistantOverride.summary
+        }
+      ]
+    : itemsForSelectedDate.map((item) => ({ id: item.id, summary: item.summary }));
+  const selectedSummary = assistantOverride?.summary ?? itemsForSelectedDate.map((item) => item.summary).join("\n\n");
+
+  useEffect(() => {
+    setAssistantDraft(selectedSummary);
+    setAssistantFeedback("");
+  }, [selectedDate, selectedSummary]);
 
   function switchMonth(offset: number) {
     const next = new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() + offset, 1);
@@ -112,124 +130,186 @@ export default function MemoryPage() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
-        <SectionHeader
-          eyebrow="Memory"
-          title="记忆查看"
-          description="左侧选择日期查看当天的记忆总结，右侧按日期展开当天沉淀下来的记忆文字条。"
-          action={<MemorySwitcher compact />}
-        />
+      <SectionHeader
+        eyebrow="Memory"
+        title="记忆查看"
+        description="左侧选择日期查看当天的记忆总结，右侧按日期展开当天沉淀下来的记忆文字条。"
+        action={<MemorySwitcher compact />}
+      />
 
-        <div className="grid gap-5 xl:grid-cols-[360px_minmax(0,1fr)]">
-          <Card className="p-5">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <h2 className="flex items-center gap-2 text-lg font-semibold text-ink">
-                  <CalendarDays className="h-5 w-5 text-sage" />
-                  日历视图
-                </h2>
-              </div>
+      <div className="grid gap-5 xl:grid-cols-[360px_minmax(0,1fr)]">
+        <Card className="p-4 sm:p-5">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h2 className="flex items-center gap-2 text-lg font-semibold text-ink">
+                <CalendarDays className="h-5 w-5 text-sage" />
+                日历视图
+              </h2>
             </div>
+          </div>
 
-            <div className="mt-6">
-              <div className="flex items-center justify-between gap-3">
-                <button
-                  type="button"
-                  className="flex h-10 w-10 items-center justify-center rounded-[14px] bg-[#fcf4f8] text-sage transition hover:bg-[#f6eef5]"
-                  onClick={() => switchMonth(-1)}
-                  title="上个月"
-                >
-                  <ChevronLeft className="h-5 w-5" />
-                </button>
-                <div className="flex items-center gap-3">
-                  <CalendarDays className="h-5 w-5 text-sage" />
-                  <p className="font-editorial text-[30px] text-ink">{monthLabel}</p>
-                </div>
-                <button
-                  type="button"
-                  className="flex h-10 w-10 items-center justify-center rounded-[14px] bg-[#fcf4f8] text-sage transition hover:bg-[#f6eef5]"
-                  onClick={() => switchMonth(1)}
-                  title="下个月"
-                >
-                  <ChevronRight className="h-5 w-5" />
-                </button>
+          <div className="mt-6">
+            <div className="flex items-center justify-between gap-3">
+              <button
+                type="button"
+                className="flex h-10 w-10 items-center justify-center rounded-[14px] bg-[#fcf4f8] text-sage transition hover:bg-[#f6eef5]"
+                onClick={() => switchMonth(-1)}
+                title="上个月"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+              <div className="flex items-center gap-3">
+                <CalendarDays className="h-5 w-5 text-sage" />
+                <p className="font-editorial text-[24px] text-ink sm:text-[30px]">{monthLabel}</p>
               </div>
-              <div className="mt-6 grid grid-cols-7 gap-y-4 text-center text-[17px] font-semibold text-ink/56">
-                {weekLabels.map((label) => (
-                  <div key={label}>{label}</div>
-                ))}
-              </div>
-
-              <div className="mt-5 space-y-3">
-                {!monthDates.length ? (
-                  <div className="rounded-[18px] border border-dashed border-line bg-mist px-4 py-4 text-sm leading-7 text-ink/50">
-                    当前月份暂无记忆，日历仍可切换到其他月份继续查看。
-                  </div>
-                ) : null}
-                {weeks.map((week, weekIndex) => (
-                  <div key={`week-${weekIndex}`} className="grid grid-cols-7 gap-y-3 text-center">
-                    {week.map((cell) => {
-                      if (!cell.day || !cell.fullDate) {
-                        return <div key={cell.key} className="h-14" />;
-                      }
-
-                      const isActive = cell.fullDate === selectedDate;
-                      const hasItems = cell.hasItems;
-
-                      return (
-                        <div key={cell.key} className="flex justify-center">
-                          <button
-                            type="button"
-                            onClick={() => setSelectedDate(cell.fullDate!)}
-                            className={[
-                              "flex h-14 w-14 items-center justify-center rounded-[18px] text-[18px] font-semibold transition",
-                              isActive
-                                ? "border border-[#efbfd3] bg-white text-ink shadow-[0_10px_24px_rgba(154,116,138,0.12)]"
-                                : hasItems
-                                  ? "bg-white text-ink shadow-[0_6px_18px_rgba(154,116,138,0.08)]"
-                                  : "text-ink/34 hover:bg-white/60"
-                            ].join(" ")}
-                          >
-                            {cell.day}
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ))}
-              </div>
+              <button
+                type="button"
+                className="flex h-10 w-10 items-center justify-center rounded-[14px] bg-[#fcf4f8] text-sage transition hover:bg-[#f6eef5]"
+                onClick={() => switchMonth(1)}
+                title="下个月"
+              >
+                <ChevronRight className="h-5 w-5" />
+              </button>
             </div>
-
-          </Card>
-
-          <Card className="p-5">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <h2 className="flex items-center gap-2 text-lg font-semibold text-ink">
-                  <Clock3 className="h-5 w-5 text-sage" />
-                  记忆文字条
-                </h2>
-              </div>
-              <Badge tone="neutral">{itemsForSelectedDate.length} 条</Badge>
+            <div className="mt-6 grid grid-cols-7 gap-y-3 text-center text-sm font-semibold text-ink/56 sm:text-[17px]">
+              {weekLabels.map((label) => (
+                <div key={label}>{label}</div>
+              ))}
             </div>
 
             <div className="mt-5 space-y-3">
-              {itemsForSelectedDate.map((item) => (
-                <article
-                  key={item.id}
-                  className="max-w-[560px] rounded-[18px] border border-line bg-white px-4 py-3 shadow-sm"
-                >
-                  <p className="text-sm leading-7 text-ink/68">{item.summary}</p>
-                </article>
-              ))}
-
-              {itemsForSelectedDate.length === 0 ? (
-                <div className="rounded-[22px] border border-dashed border-line bg-mist px-5 py-8 text-sm leading-7 text-ink/48">
-                  这一天还没有出现新的记忆条目，可以切换到其他日期查看。
+              {!monthDates.length ? (
+                <div className="rounded-[18px] border border-dashed border-line bg-mist px-4 py-4 text-sm leading-7 text-ink/50">
+                  当前月份暂无记忆，日历仍可切换到其他月份继续查看。
                 </div>
               ) : null}
+              {weeks.map((week, weekIndex) => (
+                <div key={`week-${weekIndex}`} className="grid grid-cols-7 gap-y-2 sm:gap-y-3 text-center">
+                  {week.map((cell) => {
+                    if (!cell.day || !cell.fullDate) {
+                      return <div key={cell.key} className="h-11 sm:h-14" />;
+                    }
+
+                    const isActive = cell.fullDate === selectedDate;
+                    const hasItems = cell.hasItems;
+
+                    return (
+                      <div key={cell.key} className="flex justify-center">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedDate(cell.fullDate!)}
+                          className={[
+                            "flex h-11 w-11 items-center justify-center rounded-[14px] text-sm font-semibold transition sm:h-14 sm:w-14 sm:rounded-[18px] sm:text-[18px]",
+                            isActive
+                              ? "border border-[#efbfd3] bg-white text-ink shadow-[0_10px_24px_rgba(154,116,138,0.12)]"
+                              : hasItems
+                                ? "bg-white text-ink shadow-[0_6px_18px_rgba(154,116,138,0.08)]"
+                                : "text-ink/34 hover:bg-white/60"
+                          ].join(" ")}
+                        >
+                          {cell.day}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
             </div>
-          </Card>
-        </div>
+          </div>
+        </Card>
+
+        <Card className="p-4 sm:p-5">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h2 className="flex items-center gap-2 text-lg font-semibold text-ink">
+                <Clock3 className="h-5 w-5 text-sage" />
+                记忆文字条
+              </h2>
+              <p className="mt-2 text-sm leading-6 text-ink/56">AI 助手可以基于当前内容帮你补充、整理或改写记忆，再回到提示词调试页继续使用。</p>
+            </div>
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <Badge tone="neutral">{displayedItems.length} 条</Badge>
+              <Button
+                variant={assistantMode === "editing" ? "primary" : "secondary"}
+                className="min-h-8 px-3 text-xs"
+                onClick={() => {
+                  setAssistantMode((current) => (current === "editing" ? "idle" : "editing"));
+                  setAssistantFeedback("");
+                }}
+              >
+                <WandSparkles className="h-3.5 w-3.5" />
+                AI 助手改记忆
+              </Button>
+            </div>
+          </div>
+
+          {assistantMode === "editing" ? (
+            <div className="mt-4 space-y-4 rounded-[20px] bg-mist px-4 py-4">
+              <div className="text-sm leading-7 text-ink/62">
+                AI 助手已进入改记忆模式。你可以直接重写这一天的记忆摘要，保存后会覆盖当前智能体这一天的展示内容。
+              </div>
+              <textarea
+                className={`${textareaClass} min-h-[150px] bg-white`}
+                value={assistantDraft}
+                onChange={(event) => {
+                  setAssistantDraft(event.target.value);
+                  setAssistantFeedback("");
+                }}
+                placeholder="输入整理后的记忆内容"
+              />
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-xs leading-6 text-ink/46">当前日期：{selectedDate ? formatDateLabel(selectedDate) : "暂无可编辑日期"}</p>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant="secondary"
+                    className="min-h-9 px-4 text-xs"
+                    onClick={() => {
+                      setAssistantDraft(selectedSummary);
+                      setAssistantFeedback("已恢复到当前记录内容。");
+                    }}
+                  >
+                    恢复原文
+                  </Button>
+                  <Button
+                    className="min-h-9 px-4 text-xs"
+                    disabled={!selectedDate || !assistantDraft.trim()}
+                    onClick={() => {
+                      if (!selectedDate || !assistantDraft.trim()) return;
+                      updateMemorySummary({
+                        memorySpaceId,
+                        date: selectedDate,
+                        summary: assistantDraft
+                      });
+                      setAssistantFeedback("记忆内容已更新，当前智能体会优先使用这份改写结果。");
+                    }}
+                  >
+                    <Save className="h-3.5 w-3.5" />
+                    保存记忆
+                  </Button>
+                </div>
+              </div>
+              {assistantFeedback ? <p className="text-sm text-sage">{assistantFeedback}</p> : null}
+            </div>
+          ) : null}
+
+          <div className="mt-5 space-y-3">
+            {displayedItems.map((item) => (
+              <article
+                key={item.id}
+                className="max-w-full rounded-[18px] border border-line bg-white px-4 py-3 shadow-sm sm:max-w-[560px]"
+              >
+                <p className="text-sm leading-7 text-ink/68 whitespace-pre-line">{item.summary}</p>
+              </article>
+            ))}
+
+            {displayedItems.length === 0 ? (
+              <div className="rounded-[22px] border border-dashed border-line bg-mist px-5 py-8 text-sm leading-7 text-ink/48">
+                这一天还没有出现新的记忆条目，可以切换到其他日期查看。
+              </div>
+            ) : null}
+          </div>
+        </Card>
+      </div>
     </div>
   );
 }

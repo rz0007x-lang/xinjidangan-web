@@ -14,6 +14,7 @@ import {
 import type {
   AuditStatus,
   DemoAccount,
+  MemoryAssistantDraft,
   MemorySpace,
   PromptDraft,
   PromptMemoryPreset,
@@ -42,19 +43,20 @@ type AppState = {
   demoAccounts: DemoAccount[];
   currentMemoryId: string;
   memorySpaces: MemorySpace[];
+  memoryAssistantDrafts: Record<string, MemoryAssistantDraft[]>;
   promptPersonas: PromptPersonaPreset[];
   promptMemories: PromptMemoryPreset[];
   templates: PromptTemplate[];
   promptDrafts: PromptDraft[];
   reviewSubmissions: ReviewSubmission[];
   shareCampaigns: ShareCampaign[];
-  inboxReadMessageIds: string[];
   login: (account: string, password: string) => { ok: boolean; reason?: "account_not_found" | "wrong_password" | "account_disabled" };
   registerDemoAccount: (account: string, password: string) => { ok: boolean; reason?: "account_exists" };
   resetDemoPassword: (account: string, password: string) => { ok: boolean; reason?: "account_not_found" };
   logout: () => void;
   setCurrentMemoryId: (id: string) => void;
   deleteMemorySpace: (id: string) => { ok: boolean; reason?: "last_memory" | "not_found" };
+  updateMemorySummary: (input: { memorySpaceId: string; date: string; summary: string }) => void;
   recharge: (amount: number, bonus: number) => void;
   savePromptDraft: (draft: PromptDraft) => void;
   uploadTemplate: (template: UploadTemplateInput) => PromptTemplate;
@@ -66,8 +68,6 @@ type AppState = {
   recordShareVisit: (code: string) => string;
   recordShareActivation: (code: string, visitorId: string) => void;
   recordShareEffectiveUse: (code: string, visitorId: string, detail?: { stayedLongEnough?: boolean; repliedToAgent?: boolean }) => void;
-  markInboxMessageRead: (messageId: string) => void;
-  markAllInboxMessagesRead: (messageIds: string[]) => void;
 };
 
 const STORAGE_KEY = "companion-platform-state-v1";
@@ -80,11 +80,11 @@ type PersistedState = {
   demoAccounts: DemoAccount[];
   memorySpaces: MemorySpace[];
   currentMemoryId: string;
+  memoryAssistantDrafts: Record<string, MemoryAssistantDraft[]>;
   templates: PromptTemplate[];
   promptDrafts: PromptDraft[];
   reviewSubmissions: ReviewSubmission[];
   shareCampaigns: ShareCampaign[];
-  inboxReadMessageIds: string[];
 };
 
 const defaultState: PersistedState = {
@@ -93,11 +93,11 @@ const defaultState: PersistedState = {
   demoAccounts: initialDemoAccounts,
   memorySpaces: initialMemorySpaces,
   currentMemoryId: initialMemorySpaces[0].id,
+  memoryAssistantDrafts: {},
   templates: initialPromptTemplates,
   promptDrafts: initialPromptDrafts,
   reviewSubmissions: [],
   shareCampaigns: [],
-  inboxReadMessageIds: []
 };
 
 function createShareCode(memoryId: string, templateId: string) {
@@ -161,6 +161,7 @@ function mergePersistedState(parsed: PersistedState) {
     ...parsed,
     user: { ...defaultState.user, ...parsed.user },
     memorySpaces: parsed.memorySpaces?.length ? parsed.memorySpaces : defaultState.memorySpaces,
+    memoryAssistantDrafts: parsed.memoryAssistantDrafts ?? defaultState.memoryAssistantDrafts,
     promptDrafts: normalizePromptDrafts(parsed.promptDrafts ?? defaultState.promptDrafts),
     shareCampaigns: hydrateShareCampaigns(parsed.shareCampaigns ?? defaultState.shareCampaigns)
   };
@@ -201,13 +202,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       demoAccounts: state.demoAccounts,
       currentMemoryId: state.currentMemoryId,
       memorySpaces: state.memorySpaces,
+      memoryAssistantDrafts: state.memoryAssistantDrafts,
       promptPersonas: initialPromptPersonaPresets,
       promptMemories: initialPromptMemoryPresets,
       templates: state.templates,
       promptDrafts: state.promptDrafts,
       reviewSubmissions: state.reviewSubmissions,
       shareCampaigns: state.shareCampaigns,
-      inboxReadMessageIds: state.inboxReadMessageIds,
       login: (account: string, password: string) => {
         const normalizedAccount = normalizeAccount(account);
         const normalizedPassword = password.trim();
@@ -304,12 +305,35 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             ...current,
             memorySpaces: remainingMemorySpaces,
             currentMemoryId: nextCurrentMemoryId,
+            memoryAssistantDrafts: Object.fromEntries(
+              Object.entries(current.memoryAssistantDrafts).filter(([memorySpaceId]) => memorySpaceId !== id)
+            ),
             promptDrafts: current.promptDrafts.filter((item) => item.memorySpaceId !== id),
             shareCampaigns: current.shareCampaigns.filter((item) => item.memorySpaceId !== id)
           };
         });
 
         return { ok: true as const };
+      },
+      updateMemorySummary: ({ memorySpaceId, date, summary }) => {
+        const trimmedSummary = summary.trim();
+        if (!trimmedSummary) return;
+
+        setState((current) => {
+          const currentDrafts = current.memoryAssistantDrafts[memorySpaceId] ?? [];
+          const nextDraft = { date, summary: trimmedSummary };
+
+          return {
+            ...current,
+            memoryAssistantDrafts: {
+              ...current.memoryAssistantDrafts,
+              [memorySpaceId]: [
+                nextDraft,
+                ...currentDrafts.filter((item) => item.date !== date)
+              ]
+            }
+          };
+        });
       },
       recharge: (amount: number, bonus: number) => {
         setState((current) => ({
@@ -535,22 +559,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           )
         }));
       },
-      markInboxMessageRead: (messageId: string) => {
-        setState((current) =>
-          current.inboxReadMessageIds.includes(messageId)
-            ? current
-            : {
-                ...current,
-                inboxReadMessageIds: [...current.inboxReadMessageIds, messageId]
-              }
-        );
-      },
-      markAllInboxMessagesRead: (messageIds: string[]) => {
-        setState((current) => ({
-          ...current,
-          inboxReadMessageIds: Array.from(new Set([...current.inboxReadMessageIds, ...messageIds]))
-        }));
-      }
     }),
     [state]
   );

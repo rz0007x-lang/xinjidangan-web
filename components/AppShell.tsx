@@ -9,7 +9,6 @@ import {
   CreditCard,
   Headset,
   Home,
-  Inbox,
   Megaphone,
   LayoutDashboard,
   LogOut,
@@ -23,7 +22,6 @@ const navItems = [
   { href: "/prompt-debug", label: "提示词调试", icon: MessageSquareText },
   { href: "/memory", label: "记忆查看", icon: BrainCircuit },
   { href: "/growth", label: "邀请与分享", icon: Megaphone },
-  { href: "/inbox", label: "收件箱", icon: Inbox },
   { href: "/recharge", label: "充值中心", icon: CreditCard }
 ];
 
@@ -74,7 +72,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen lg:grid lg:grid-cols-[248px_1fr]">
+    <div className="min-h-screen overflow-x-hidden lg:grid lg:grid-cols-[248px_1fr]">
       <aside className="hidden border-r border-line/70 bg-linen/70 px-5 py-6 backdrop-blur lg:block">
         <Link href="/home" className="mb-8 flex items-center gap-3 rounded-lg px-2">
           <span>
@@ -105,12 +103,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </nav>
       </aside>
 
-      <div className="min-w-0">
-        <header className="sticky top-0 z-20 border-b border-line/70 bg-linen/82 px-4 py-3 backdrop-blur lg:px-8">
+      <div className="min-w-0 overflow-x-hidden">
+        <header className="sticky top-0 z-20 border-b border-line/70 bg-linen/82 px-3 py-3 backdrop-blur sm:px-4 lg:px-8">
           <div className="flex items-center justify-between gap-3">
             <Link href="/home" className="flex items-center gap-2 lg:hidden">
               <LayoutDashboard className="h-5 w-5 text-sage" />
-              <span className="font-semibold text-ink">心迹档案</span>
+              <span className="max-w-[9rem] truncate font-semibold text-ink">心迹档案</span>
             </Link>
             <div className="hidden text-[11px] uppercase tracking-[0.22em] text-ink/42 lg:block">Union Soul Workspace</div>
             <div className="flex items-center gap-3">
@@ -159,7 +157,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </div>
             </div>
           </div>
-          <nav className="mt-3 flex gap-2 overflow-x-auto pb-1 lg:hidden">
+          <nav className="mt-3 flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:hidden">
             {navItems.map((item) => {
               const Icon = item.icon;
               const active = pathname === item.href;
@@ -180,7 +178,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </nav>
         </header>
 
-        <main className="px-4 py-6 sm:px-6 lg:px-8">{children}</main>
+        <main className="px-3 py-5 sm:px-6 sm:py-6 lg:px-8">{children}</main>
       </div>
     </div>
   );

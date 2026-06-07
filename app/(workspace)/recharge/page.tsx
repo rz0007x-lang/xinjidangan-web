@@ -224,16 +224,16 @@ export default function RechargePage() {
         />
 
         <div className="grid gap-5 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
-          <Card className="p-6">
+          <Card className="p-4 sm:p-6">
             <div className="grid gap-4 md:grid-cols-2">
               <div className="rounded-[22px] bg-mist p-5">
                 <p className="text-sm text-ink/54">现金账户</p>
-                <p className="font-editorial mt-3 text-[40px] leading-none text-ink">¥{user.cashBalance.toFixed(2)}</p>
+                <p className="font-editorial mt-3 text-[32px] leading-none text-ink sm:text-[40px]">¥{user.cashBalance.toFixed(2)}</p>
                 <p className="mt-3 text-sm leading-6 text-ink/56">表示累计充值到账的现金余额，不包含赠送部分。</p>
               </div>
               <div className="rounded-[22px] bg-mist p-5">
                 <p className="text-sm text-ink/54">Token 账户</p>
-                <p className="font-editorial mt-3 text-[40px] leading-none text-ink">{user.tokenBalance.toLocaleString()}</p>
+                <p className="font-editorial mt-3 text-[32px] leading-none text-ink sm:text-[40px]">{user.tokenBalance.toLocaleString()}</p>
                 <p className="mt-3 text-sm leading-6 text-ink/56">表示可消费额度，充值金额与赠送奖励都会累积到这里。</p>
               </div>
             </div>
@@ -241,7 +241,7 @@ export default function RechargePage() {
             <div className="mt-7">
               <div className="mb-3 flex items-center justify-between gap-4">
                 <div>
-                  <p className="font-editorial text-[28px] text-ink">使用分布</p>
+                  <p className="font-editorial text-[24px] text-ink sm:text-[28px]">使用分布</p>
                   <p className="mt-1 text-sm text-ink/54">当前会员状态：{user.membership} · 1 元 = 1000 tokens</p>
                 </div>
                 <WalletCards className="h-6 w-6 text-sage" />
@@ -266,14 +266,14 @@ export default function RechargePage() {
             </div>
 
             <div className="mt-10">
-              <h2 className="font-editorial text-[28px] text-ink">充值套餐</h2>
-              <div className="mt-5 flex flex-wrap gap-4">
+              <h2 className="font-editorial text-[24px] text-ink sm:text-[28px]">充值套餐</h2>
+              <div className="mt-5 flex flex-wrap gap-3 sm:gap-4">
                 {rechargePlans.map((plan) => {
                   const selected = !customAmount && plan.id === selectedPlanId;
                   return (
                     <button
                       key={plan.id}
-                      className={`rounded-full border px-7 py-3 text-[18px] font-semibold transition ${
+                      className={`rounded-full border px-5 py-3 text-base font-semibold transition sm:px-7 sm:text-[18px] ${
                         selected
                           ? "border-[#d8caed] bg-[#f5eef8] text-ink shadow-[0_8px_22px_rgba(126,110,135,0.08)]"
                           : "border-line bg-white text-ink hover:border-[#d8caed]"
@@ -291,7 +291,7 @@ export default function RechargePage() {
             </div>
 
             <div className="mt-10">
-              <h2 className="font-editorial text-[28px] text-ink">自定义充值</h2>
+              <h2 className="font-editorial text-[24px] text-ink sm:text-[28px]">自定义充值</h2>
               <div className="mt-5">
                 <input
                   className={`${inputClass} min-h-14 rounded-[20px] px-6 text-base`}
@@ -390,9 +390,9 @@ export default function RechargePage() {
             ) : null}
           </Card>
 
-          <Card className="p-6">
+          <Card className="p-4 sm:p-6">
             <div>
-              <h2 className="font-editorial text-[30px] text-ink">优惠券</h2>
+              <h2 className="font-editorial text-[24px] text-ink sm:text-[30px]">优惠券</h2>
               <p className="mt-2 text-sm leading-6 text-ink/58">优惠券只在充值中心处理，不再和邀请奖励、分享活动混在一起。</p>
             </div>
 
@@ -450,9 +450,9 @@ export default function RechargePage() {
           </Card>
         </div>
 
-        <Card className="p-6">
+        <Card className="p-4 sm:p-6">
           <div className="mb-5">
-            <h2 className="font-editorial text-[28px] text-ink">支付记录</h2>
+            <h2 className="font-editorial text-[24px] text-ink sm:text-[28px]">支付记录</h2>
             <p className="mt-2 text-sm leading-6 text-ink/56">最近的支付成功、失败和取消状态会同步记录在这里。</p>
           </div>
 
@@ -491,12 +491,12 @@ export default function RechargePage() {
       </div>
 
       {paymentOpen ? (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-[rgba(91,75,90,0.28)] px-4 py-6 backdrop-blur-sm">
-          <Card className="w-full max-w-xl p-6">
+        <div className="fixed inset-0 z-40 overflow-y-auto bg-[rgba(91,75,90,0.28)] px-3 py-4 backdrop-blur-sm sm:flex sm:items-center sm:justify-center sm:px-4 sm:py-6">
+          <Card className="mx-auto w-full max-w-xl p-4 sm:p-6">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-[11px] uppercase tracking-[0.22em] text-ink/42">Payment</p>
-                <h2 className="font-editorial mt-2 text-[30px] text-ink">选择支付方式</h2>
+                <h2 className="font-editorial mt-2 text-[24px] text-ink sm:text-[30px]">选择支付方式</h2>
                 <p className="mt-2 text-sm leading-6 text-ink/58">付款后会分别更新现金账户与 Token 账户。</p>
               </div>
               <button
@@ -510,12 +510,12 @@ export default function RechargePage() {
             </div>
 
             <div className="mt-6 rounded-[22px] bg-mist p-5">
-              <div className="flex items-end justify-between gap-4">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                 <div>
                   <p className="text-sm text-ink/54">本次实付</p>
-                  <p className="font-editorial mt-2 text-[34px] leading-none text-ink">¥{paymentTotal.toFixed(2)}</p>
+                  <p className="font-editorial mt-2 text-[28px] leading-none text-ink sm:text-[34px]">¥{paymentTotal.toFixed(2)}</p>
                 </div>
-                <div className="text-right text-sm text-ink/56">
+                <div className="text-sm text-ink/56 sm:text-right">
                   <p>充值金额：¥{rechargeAmount.toFixed(2)}</p>
                   <p className="mt-1">赠送奖励：¥{rechargeBonus.toFixed(2)}</p>
                   <p className="mt-1">优惠券抵扣：-¥{couponDiscount.toFixed(2)}</p>
@@ -569,12 +569,12 @@ export default function RechargePage() {
       ) : null}
 
       {selectedRecord ? (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-[rgba(91,75,90,0.24)] px-4 py-6 backdrop-blur-sm">
-          <Card className="w-full max-w-2xl p-6">
+        <div className="fixed inset-0 z-40 overflow-y-auto bg-[rgba(91,75,90,0.24)] px-3 py-4 backdrop-blur-sm sm:flex sm:items-center sm:justify-center sm:px-4 sm:py-6">
+          <Card className="mx-auto w-full max-w-2xl p-4 sm:p-6">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-[11px] uppercase tracking-[0.22em] text-ink/42">Order Detail</p>
-                <h2 className="font-editorial mt-2 text-[30px] text-ink">支付详情</h2>
+                <h2 className="font-editorial mt-2 text-[24px] text-ink sm:text-[30px]">支付详情</h2>
                 <p className="mt-2 text-sm leading-6 text-ink/58">这里展示订单、支付方式、优惠抵扣与到账信息。</p>
               </div>
               <button

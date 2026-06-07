@@ -57,10 +57,10 @@ export default function SupportPage() {
       <SectionHeader
         eyebrow="Support"
         title="联系客服"
-        description="这里是问题处理页；收件箱只负责接收通知和结果，客服页专门用于发起咨询。"
+        description="这里是问题处理页；活动审核、奖励进度和系统提醒会直接发送到通知邮箱，客服页专门用于发起咨询。"
       />
 
-      <Card className="flex min-h-[760px] flex-col p-6">
+      <Card className="flex min-h-[760px] flex-col p-4 sm:p-6">
         <div className="border-b border-line/80 pb-5">
           <h2 className="font-editorial text-[28px] text-ink">客服会话</h2>
           <p className="mt-1 text-sm leading-6 text-ink/56">当前接待：客服小U · {user.nickname}</p>
@@ -104,7 +104,7 @@ export default function SupportPage() {
           })}
         </div>
 
-        <form className="flex gap-3 border-t border-line/80 pt-5" onSubmit={handleSubmit}>
+        <form className="flex flex-col gap-3 border-t border-line/80 pt-5 sm:flex-row" onSubmit={handleSubmit}>
           <input
             className="min-h-12 flex-1 rounded-[18px] border border-line bg-white/94 px-4 text-sm outline-none focus:border-sage"
             value={input}
@@ -112,7 +112,7 @@ export default function SupportPage() {
             placeholder="输入你想咨询的问题"
             disabled={status === "closed"}
           />
-          <Button type="submit" className="px-5" disabled={status === "closed"}>
+          <Button type="submit" className="w-full px-5 sm:w-auto" disabled={status === "closed"}>
             <Send className="h-4 w-4" />
             发送
           </Button>

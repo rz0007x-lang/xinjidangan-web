@@ -86,10 +86,10 @@ export default function GrowthPage() {
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-5">
-          <Card className="p-6">
+          <Card className="p-4 sm:p-6">
             <h2 className="font-editorial text-[28px] text-ink">邀请码</h2>
             <p className="mt-2 text-sm leading-6 text-ink/58">邀请码属于增长激励链路，用于邀请新用户绑定并记录奖励。</p>
-            <div className="mt-5 rounded-[22px] bg-mist p-5">
+            <div className="mt-5 rounded-[22px] bg-mist p-4 sm:p-5">
               <p className="text-sm text-ink/54">我的邀请码</p>
               <p className="mt-3 inline-flex rounded-full bg-white px-4 py-2 text-sm font-medium text-ink">{inviteCode}</p>
               <div className="mt-4 flex flex-wrap gap-3">
@@ -101,16 +101,16 @@ export default function GrowthPage() {
             </div>
           </Card>
 
-          <Card className="p-6">
+          <Card className="p-4 sm:p-6">
             <h2 className="font-editorial text-[28px] text-ink">发帖活动</h2>
-            <p className="mt-2 text-sm leading-6 text-ink/58">发帖链接提交后会进入审核队列，审核结果会通过收件箱通知。</p>
-            <div className="mt-5 rounded-[22px] bg-mist p-5">
+            <p className="mt-2 text-sm leading-6 text-ink/58">发帖链接提交后会进入审核队列，审核结果会直接发送到你的通知邮箱。</p>
+            <div className="mt-5 rounded-[22px] bg-mist p-4 sm:p-5">
               <ul className="space-y-3 text-sm leading-7 text-ink/66">
                 <li>发帖即送 50 轮对话奖励</li>
                 <li>每月点赞数大于 100 的作品，按点赞数统计前 10 名赠送 189 元 tokens</li>
                 <li>当月第一名若点赞破万，再额外赠送 999 元 tokens</li>
               </ul>
-              <div className="mt-5 flex gap-3">
+              <div className="mt-5 flex flex-col gap-3 sm:flex-row">
                 <input
                   className={`${inputClass} min-h-14 flex-1 rounded-[18px] px-5 text-base`}
                   placeholder="输入帖子链接"
@@ -122,7 +122,7 @@ export default function GrowthPage() {
                   }}
                 />
                 <Button
-                  className="min-h-14 px-6 text-base font-semibold"
+                  className="min-h-14 w-full px-6 text-base font-semibold sm:w-auto"
                   onClick={() => {
                     if (!postLink.trim()) return;
                     if (!isValidSubmissionLink(postLink)) {
@@ -145,14 +145,14 @@ export default function GrowthPage() {
                 </Button>
               </div>
               {postError ? <p className="mt-3 text-sm text-red-500">{postError}</p> : null}
-              {postSubmitted ? <p className="mt-3 text-sm text-sage">帖子链接已提交，审核结果会通过收件箱同步通知。</p> : null}
+              {postSubmitted ? <p className="mt-3 text-sm text-sage">帖子链接已提交，审核结果会发送到你的通知邮箱。</p> : null}
             </div>
           </Card>
 
-          <Card className="p-6">
+          <Card className="p-4 sm:p-6">
             <h2 className="font-editorial text-[28px] text-ink">创作分享码</h2>
             <p className="mt-2 text-sm leading-6 text-ink/58">模板是可导入的设定方案；分享链路会基于当前记忆体和选中的模板生成专属体验链接。</p>
-            <div className="mt-5 rounded-[22px] bg-mist p-5">
+            <div className="mt-5 rounded-[22px] bg-mist p-4 sm:p-5">
               <div>
                 <p className="text-sm text-ink/58">选择模板</p>
                 <select
@@ -200,7 +200,7 @@ export default function GrowthPage() {
           </Card>
         </div>
 
-        <Card className="p-6">
+        <Card className="p-4 sm:p-6">
           <h2 className="font-editorial text-[28px] text-ink">奖励进度</h2>
           <p className="mt-2 text-sm leading-6 text-ink/58">这里显示当前分享链路的真实进度口径：浏览、开始体验、有效体验。</p>
 
