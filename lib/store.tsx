@@ -139,7 +139,8 @@ function normalizePromptDrafts(drafts: PromptDraft[]) {
     return {
       ...baseline,
       ...draft,
-      memoryName: memory?.name ?? draft.memoryName ?? baseline.memoryName ?? ""
+      memoryName: memory?.name ?? draft.memoryName ?? baseline.memoryName ?? "",
+      linkedMemorySpaceId: draft.linkedMemorySpaceId ?? baseline.linkedMemorySpaceId ?? draft.memorySpaceId
     } as PromptDraft;
   });
 }
@@ -302,7 +303,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             {
               ...fallback,
               ...draft,
-              memoryName: memory?.name ?? draft.memoryName
+              memoryName: memory?.name ?? draft.memoryName,
+              linkedMemorySpaceId: draft.linkedMemorySpaceId ?? fallback.linkedMemorySpaceId ?? draft.memorySpaceId
             }
           ]
         }));
@@ -351,6 +353,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const draft: PromptDraft = {
           memorySpaceId: memoryId,
           memoryName: memory?.name ?? existingDraft.memoryName,
+          linkedMemorySpaceId: existingDraft.linkedMemorySpaceId ?? memoryId,
           personaId: existingDraft.personaId,
           personaName: existingDraft.personaName,
           promptMemoryId: existingDraft.promptMemoryId,

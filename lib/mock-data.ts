@@ -336,6 +336,7 @@ export function buildPromptDraft(memorySpaceId: string): PromptDraft {
   return {
     memorySpaceId,
     memoryName: memorySpace.name,
+    linkedMemorySpaceId: memorySpace.id,
     personaId: persona.id,
     personaName: persona.name,
     promptMemoryId: memoryPreset.id,

@@ -38,6 +38,7 @@ function PromptDebugContent() {
   const importedTemplateId = searchParams.get("template");
   const {
     currentMemoryId,
+    memorySpaces,
     promptMemories,
     promptPersonas,
     templates,
@@ -67,6 +68,10 @@ function PromptDebugContent() {
   const availableMemories = useMemo(
     () => promptMemories.filter((item) => item.personaId === draft.personaId),
     [draft.personaId, promptMemories]
+  );
+  const linkedMemorySpace = useMemo(
+    () => memorySpaces.find((item) => item.id === draft.linkedMemorySpaceId) ?? currentMemory,
+    [currentMemory, draft.linkedMemorySpaceId, memorySpaces]
   );
 
   function updateDraft<K extends keyof PromptDraft>(key: K, value: PromptDraft[K], maxLength: number, label: string) {
@@ -161,6 +166,18 @@ function PromptDebugContent() {
     setSaved(false);
   }
 
+  function applyLinkedMemorySpace(linkedMemorySpaceId: string) {
+    const nextMemorySpace = memorySpaces.find((item) => item.id === linkedMemorySpaceId);
+    if (!nextMemorySpace) return;
+
+    setDraft((current) => ({
+      ...current,
+      linkedMemorySpaceId: nextMemorySpace.id
+    }));
+    setHasUnsavedChanges(true);
+    setSaved(false);
+  }
+
   function handleChat(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const trimmed = message.trim();
@@ -171,7 +188,7 @@ function PromptDebugContent() {
       { role: "user", content: trimmed },
       {
         role: "ai",
-        content: `现在是「${draft.personaName} + ${draft.promptMemoryName}」这组设定。我会用${draft.tone.slice(0, 12)}的语气回应，并参考这段记忆：${draft.promptMemorySnippet.slice(0, 34)}。就这条消息看，当前最该接住的是：${trimmed.slice(0, 36)}。`
+        content: `现在是「${draft.personaName} + ${draft.promptMemoryName}」这组设定，并引用「${linkedMemorySpace.name}」的记忆体。我会用${draft.tone.slice(0, 12)}的语气回应，并参考这段记忆：${draft.promptMemorySnippet.slice(0, 34)}。就这条消息看，当前最该接住的是：${trimmed.slice(0, 36)}。`
       }
     ]);
   }
@@ -281,13 +298,21 @@ function PromptDebugContent() {
                 </select>
               </label>
               <label className="md:col-span-2">
-                <span className="mb-2 block text-sm font-medium text-ink/72">记忆体内容</span>
-                <textarea
-                  className={`${textareaClass} min-h-28`}
-                  value={draft.promptMemorySnippet}
-                  onChange={(event) => updateDraft("promptMemorySnippet", event.target.value, 300, "记忆体内容")}
-                />
-                <p className="mt-2 text-xs text-ink/48">这段内容会作为当前角色绑定的记忆体摘要参与 mock 对话。</p>
+                <span className="mb-2 block text-sm font-medium text-ink/72">记忆体选择</span>
+                <select
+                  className="min-h-12 w-full rounded-[14px] border border-line bg-white/72 px-3 py-2 text-sm text-ink outline-none transition focus:border-sage focus:ring-2 focus:ring-sage/15"
+                  value={draft.linkedMemorySpaceId}
+                  onChange={(event) => applyLinkedMemorySpace(event.target.value)}
+                >
+                  {memorySpaces.map((memorySpace) => (
+                    <option key={memorySpace.id} value={memorySpace.id}>
+                      {memorySpace.name}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-2 text-xs leading-5 text-ink/48">
+                  当前智能体设定会读取「{linkedMemorySpace.name}」这份记忆体。你可以切换成小U或其他智能体的记忆体。
+                </p>
               </label>
               <label className="md:col-span-2">
                 <span className="mb-2 block text-sm font-medium text-ink/72">系统提示词 / 背景设定</span>
@@ -316,7 +341,7 @@ function PromptDebugContent() {
               <Button
                 className="w-full sm:w-auto"
                 onClick={() => {
-                  savePromptDraft({ ...draft, memorySpaceId: currentMemoryId, memoryName: currentMemory.name });
+                  savePromptDraft({ ...draft, memorySpaceId: currentMemoryId, memoryName: currentMemory.name, linkedMemorySpaceId: draft.linkedMemorySpaceId });
                   setSaved(true);
                   setHasUnsavedChanges(false);
                 }}

@@ -121,6 +121,7 @@ export type RechargePlan = {
 export type PromptDraft = {
   memorySpaceId: string;
   memoryName: string;
+  linkedMemorySpaceId: string;
   personaId: string;
   personaName: string;
   promptMemoryId: string;
